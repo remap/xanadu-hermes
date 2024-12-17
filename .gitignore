@@ -1,4 +1,6 @@
 xanadu-secret-*
+.idea/
+.venv/
 
 .DS_Store
 

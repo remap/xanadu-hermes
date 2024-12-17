@@ -1,0 +1,13 @@
+{
+  "description": "Set an asset visibility",
+  "request": "/remote/object/call",
+  "body":
+  {
+    "objectPath": "{{prefix}}LSL_Xanadu_Base_v001.LSL_Xanadu_Base_v001:PersistentLevel.StaticMeshActor_0:StaticMeshComponent0",
+    "functionName": "SetVisibility",
+    "parameters": {
+      "bNewVisibility": false
+    },
+    "generateTransaction" : true
+  }
+}

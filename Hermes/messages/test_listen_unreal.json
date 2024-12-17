@@ -1,0 +1,17 @@
+{
+  "parsing": {"type": "glom", "spec": "action.data.body.parameters.url"},
+  "action": {
+    "type": "unreal",
+    "data": {
+      "description": "Load material",
+      "request": "/remote/object/call",
+      "body": {
+        "objectPath": "{{prefix}}ML_Xanadu_v001.ML_Xanadu_v001:PersistentLevel.TestLoadImage_C_1",
+        "functionName": "Download",
+        "parameters": {
+          "url": ""
+        }
+      }
+    }
+  }
+}

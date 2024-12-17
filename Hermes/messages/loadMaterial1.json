@@ -1,0 +1,9 @@
+{
+  "description": "Load material 1",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{prefix}}ML_Xanadu_v001.ML_Xanadu_v001:PersistentLevel.TestLoadImage_C_1",
+    "functionName": "Download",
+    "parameters" : {"url":  "https://www.dropbox.com/scl/fi/16gbqgbpgrzdwpinbu55a/Undergrad_SteelPier.JPG?rlkey=mz7sa91cjhn19xsrbc862u14x&raw=1"}
+  }
+}

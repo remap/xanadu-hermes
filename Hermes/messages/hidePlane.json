@@ -1,0 +1,9 @@
+{
+  "description": "Toggle plane visibility",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{prefix}}ML_Xanadu_v001.ML_Xanadu_v001:PersistentLevel.BP_TestLoadImage_C_1",
+    "functionName": "Change Visibility",
+    "parameters": {"Visibility": true}
+  }
+}

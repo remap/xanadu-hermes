@@ -1,0 +1,5 @@
+{
+  "description": "Check connectivity with server by getting available remote endpoints",
+  "method": "get",
+  "request": "/remote/info"
+}
