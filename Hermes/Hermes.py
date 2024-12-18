@@ -15,7 +15,7 @@ import json
 import argparse
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 from nicegui import app, ui
 
@@ -46,9 +46,13 @@ if __name__=="__main__":
     parser.add_argument('-ueclient', type=str, help='unreal client host:port', default="127.0.0.1:30010")
     parser.add_argument('-oscserver', type=str, help='OSC server host:port', default="0.0.0.0:8000")
     parser.add_argument('-skipuecheck', action='store_true', help='Skip checking for ue connectivity first')
+    parser.add_argument('-instance', required=True, type=str, help='instance name')
     parser.add_argument('-gui',action='store_true',help='experimental gui')
     parser.add_argument('-runosc', type=str)
     args = parser.parse_args()
+
+    ## fb namespace
+    instance = args.instance
 
     ## OSC
     (oscServerHost, oscServerPort) = splitHostPort(args.oscserver)
@@ -65,6 +69,8 @@ if __name__=="__main__":
     messageRoot = "messages"
     internalMessageRoot = os.path.join("messages", "_internal")
 
+
+    print("Firebase namespace (instance): /" + instance)
     print("OSC Server:", oscServerHost, oscServerPort)
     print("UE Client:", ueClientHost, ueClientPort)
     print("UE Path Prefix:", prefix)
@@ -135,11 +141,25 @@ if __name__=="__main__":
     def fb_callback(result):
         print("fb async return", result)
 
+    def osc_addr_template(s):
+        return s.replace("{{instance}}", instance)
+
+    import re
     def handleOSC_KL(addr, *args):
         print("\n-KL--", datetime.today().strftime('%y-%m-%d %H:%M:%S'))
+        addr = osc_addr_template(addr)
         print("  ", addr)
         print("    k:", args[0])
         if len(args) > 1:
+            # Schedmessage templating
+            if (args[0]=="schedmessage" and args[1].startswith("{{")):
+                now = datetime.now()
+                args = list(args)
+                print("    v:", args[1:])
+                pattern = r"\{\{([0-9.]+)\}\}"
+                n = float(re.search(pattern, args[1]).group(1))
+                future_time = now + timedelta(milliseconds=n)
+                args[1] = future_time.strftime('%H:%M:%S.%f')[:-3]
             print("    v:", args[1:])
 
         result = []
@@ -156,6 +176,7 @@ if __name__=="__main__":
                                          headers={'X_FANCY_HEADER': 'VERY FANCY'}, callback=fb_callback)
     def handleOSC_FB(addr, *args):
         print("\n-FB--", datetime.today().strftime('%y-%m-%d %H:%M:%S'))
+        addr = osc_addr_template(addr)
         print("  ", addr)
         print("    k:", args[0])
         if len(args) > 1:
@@ -349,13 +370,20 @@ if __name__=="__main__":
         sys.exit(0)
 
     dispatcher = dispatcher.Dispatcher()
-    dispatcher.map("/xanadu/ue5/*", handleOSC_UE)
-    dispatcher.map("/xanadu/kl/*", handleOSC_KL)  # Kleroterion
-    dispatcher.map("/xanadu/fb/put", handleOSC_FB)  # Generic firebase
-    dispatcher.map("/xanadu/fb/post", handleOSC_FB)  # Generic firebase
-    dispatcher.map("/xanadu/fb/delete", handleOSC_FB)  # Generic firebase
-    dispatcher.map("/xanadu/fb/listen", handleOSC_FB_LISTEN)
-    dispatcher.map("/xanadu/fb/removelisten", handleOSC_FB_LISTEN)
+    dispatcher.map(f"/{instance}/ue5/*", handleOSC_UE)
+    dispatcher.map(f"/{instance}/kl/*", handleOSC_KL)  # Kleroterion
+    dispatcher.map(f"/{instance}/fb/put", handleOSC_FB)  # Generic firebase
+    dispatcher.map(f"/{instance}/fb/post", handleOSC_FB)  # Generic firebase
+    dispatcher.map(f"/{instance}/fb/delete", handleOSC_FB)  # Generic firebase
+    dispatcher.map(f"/{instance}/fb/listen", handleOSC_FB_LISTEN)
+    dispatcher.map(f"/{instance}/fb/removelisten", handleOSC_FB_LISTEN)
+    dispatcher.map("/{{instance}}/ue5/*", handleOSC_UE)
+    dispatcher.map("/{{instance}}/kl/*", handleOSC_KL)  # Kleroterion
+    dispatcher.map("/{{instance}}/fb/put", handleOSC_FB)  # Generic firebase
+    dispatcher.map("/{{instance}}/fb/post", handleOSC_FB)  # Generic firebase
+    dispatcher.map("/{{instance}}/fb/delete", handleOSC_FB)  # Generic firebase
+    dispatcher.map("/{{instance}}/fb/listen", handleOSC_FB_LISTEN)
+    dispatcher.map("/{{instance}}/fb/removelisten", handleOSC_FB_LISTEN)
 
     from firebase import firebase
     firebase = firebase.FirebaseApplication('https://xanadu-f5762-default-rtdb.firebaseio.com', None)
