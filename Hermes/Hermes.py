@@ -87,7 +87,7 @@ if __name__=="__main__":
 
     # Load Firebase credentials
     import firebase_admin
-    from firebase_admin import auth, credentials, db  # pip install firebase-admin
+    from firebase_admin import credentials, db  # pip install firebase-admin
 
     cred = credentials.Certificate("xanadu-secret-f5762-firebase-adminsdk-9oc2p-1fb50744fa.json")
     firebase_admin.initialize_app(cred, {
@@ -389,8 +389,36 @@ if __name__=="__main__":
 
     from firebase.firebase import firebase as _firebase
 
-    firebase = _firebase.FirebaseApplication('https://xanadu-f5762-default-rtdb.firebaseio.com', authentication=None)
-    #print(firebase))
+
+
+#https://firebase.google.com/docs/database/rest/auth#python
+    import google
+    from google.oauth2 import service_account
+    from google.auth.transport.requests import AuthorizedSession
+
+    # Define the required scopes
+    scopes = [
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/firebase.database"
+    ]
+
+    # Authenticate a credential with the service account
+    credentials = service_account.Credentials.from_service_account_file(
+        "xanadu-secret-f5762-firebase-adminsdk-9oc2p-1fb50744fa.json", scopes=scopes)
+
+    # Use the credentials object to authenticate a Requests session.
+    # authed_session = AuthorizedSession(credentials)
+    # response = authed_session.get(
+    #     "https://<DATABASE_NAME>.firebaseio.com/users/ada/name.json")
+
+    # Or, use the token directly, as described in the "Authenticate with an
+    # access token" section below. (not recommended)
+    request = google.auth.transport.requests.Request()
+    credentials.refresh(request)
+    access_token = credentials.token
+    print(access_token)
+
+    firebase = _firebase.FirebaseApplication('https://xanadu-f5762-default-rtdb.firebaseio.com', access_token=access_token)
 
 
     # firebase listener
