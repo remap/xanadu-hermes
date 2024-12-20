@@ -87,12 +87,14 @@ if __name__=="__main__":
 
     # Load Firebase credentials
     import firebase_admin
-    from firebase_admin import credentials, db  # pip install firebase-admin
+    from firebase_admin import auth, credentials, db  # pip install firebase-admin
 
     cred = credentials.Certificate("xanadu-secret-f5762-firebase-adminsdk-9oc2p-1fb50744fa.json")
     firebase_admin.initialize_app(cred, {
         'databaseURL': firebase_config['databaseURL']
     })
+
+
 
     # https://console.firebase.google.com/u/0/project/xanadu-f5762/database/xanadu-f5762-default-rtdb/data
     # Reference the database path to monitor
@@ -385,9 +387,11 @@ if __name__=="__main__":
     dispatcher.map("/{{instance}}/fb/listen", handleOSC_FB_LISTEN)
     dispatcher.map("/{{instance}}/fb/removelisten", handleOSC_FB_LISTEN)
 
-    from firebase import firebase
-    firebase = firebase.FirebaseApplication('https://xanadu-f5762-default-rtdb.firebaseio.com', None)
-    #print(firebase)
+    from firebase.firebase import firebase as _firebase
+
+    firebase = _firebase.FirebaseApplication('https://xanadu-f5762-default-rtdb.firebaseio.com', authentication=None)
+    #print(firebase))
+
 
     # firebase listener
     # Run the listener in a separate thread
