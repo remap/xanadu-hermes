@@ -395,6 +395,7 @@ if __name__=="__main__":
     import google
     from google.oauth2 import service_account
     from google.auth.transport.requests import AuthorizedSession
+    import uuid
 
     # Define the required scopes
     scopes = [
@@ -405,7 +406,6 @@ if __name__=="__main__":
     # Authenticate a credential with the service account
     credentials = service_account.Credentials.from_service_account_file(
         "xanadu-secret-f5762-firebase-adminsdk-9oc2p-1fb50744fa.json", scopes=scopes)
-
     # Use the credentials object to authenticate a Requests session.
     # authed_session = AuthorizedSession(credentials)
     # response = authed_session.get(
@@ -413,13 +413,25 @@ if __name__=="__main__":
 
     # Or, use the token directly, as described in the "Authenticate with an
     # access token" section below. (not recommended)
-    request = google.auth.transport.requests.Request()
-    credentials.refresh(request)
-    access_token = credentials.token
-    print(access_token)
 
-    firebase = _firebase.FirebaseApplication('https://xanadu-f5762-default-rtdb.firebaseio.com', access_token=access_token)
-
+    # this lib uses rest calls
+    firebase = _firebase.FirebaseApplication('https://xanadu-f5762-default-rtdb.firebaseio.com')
+    uid = uuid.uuid4()
+    def refresh_fb_token(firebase, uid):
+        # Refresh the token
+        request = google.auth.transport.requests.Request()
+        credentials.refresh(request)
+        access_token = credentials.token
+        expiration_time = credentials.expiry.astimezone()
+        # Print the token and expiration time in local timezone
+        print(f"Refresh FB Access Token:")
+        print(f"\tToken: {access_token[0:25]}...")
+        print(f"\tExpiry: {expiration_time}")
+        firebase.setAccessToken(access_token)
+        # Schedule the next refresh in 1 hour
+        threading.Timer(3600, refresh_fb_token, args=[firebase, uid]).start()
+    # Start the first refresh
+    refresh_fb_token(firebase, uid)
 
     # firebase listener
     # Run the listener in a separate thread
