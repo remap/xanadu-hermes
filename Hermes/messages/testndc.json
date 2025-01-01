@@ -1,0 +1,6 @@
+{
+  "request": "/remote/object/describe",
+  "body": {
+    "objectPath": "/Game/_Sets/Fall_24/ML_Xanadu_JB.ML_Xanadu_JB:PersistentLevel.NDC_7x540x1080_C_3.nDisplayScreen_3"
+  }
+}

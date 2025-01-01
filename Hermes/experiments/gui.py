@@ -13,7 +13,6 @@ from datetime import datetime
 
 
 
-
 def jprint(text):
     if isinstance(text,list):
         for t in text:

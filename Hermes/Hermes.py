@@ -21,32 +21,20 @@ from nicegui import app, ui
 
 import socketserver, socket
 
-def jprint(text):
-    if isinstance(text,list):
-        for t in text:
-            print(json.dumps(t, indent=4))
-    else:
-        print(json.dumps(text, indent=4))
-def tsformat(ts):
-    return ts.strftime("%Y-%m-%d %H:%M:%S.%f")
-def setParam(json,field,value):
-    json["body"]["parameters"][field] = value
-def splitHostPort(s):
-    host,port = s.split(":")
-    return (host,int(port))
 
-
-
+from hermes.utils import jprint, tsformat, setParam, splitHostPort
+from hermes.ue.UEClient import UEClient
 
 if __name__=="__main__":
-
 
     # Use argparse to handle command line arguments
     parser = argparse.ArgumentParser(description='Send a command to Unreal Engine via Remote Control API')
     parser.add_argument('-ueclient', type=str, help='unreal client host:port', default="127.0.0.1:30010")
     parser.add_argument('-oscserver', type=str, help='OSC server host:port', default="0.0.0.0:8000")
     parser.add_argument('-skipuecheck', action='store_true', help='Skip checking for ue connectivity first')
-    parser.add_argument('-instance', required=True, type=str, help='instance name')
+    parser.add_argument('-instance', required=False, type=str, help='instance name, will override template value')
+    parser.add_argument('-template', required=False, type=str, help='template file')
+    parser.add_argument('-messagedir', required=False, type=str, help='message folder', default="messages")
     parser.add_argument('-gui',action='store_true',help='experimental gui')
     parser.add_argument('-runosc', type=str)
     args = parser.parse_args()
@@ -65,11 +53,27 @@ if __name__=="__main__":
     prefix_PIE = "/Game/_Sets/Xanadu_Fall24_v001/UEDPIE_0_"
     prefix = prefix_PIE
 
+
+
     ##  JSON
-    messageRoot = "messages"
+    messageRoot = args.messagedir
     internalMessageRoot = os.path.join("messages", "_internal")
 
+    ## variables
+    from hermes.template import Template
+    if args.template is not None:
+        tpl = Template.from_json_file(args.template)
+        if instance is not None: tpl.add("instance",instance)
+        print(f"Template variables from {args.template}")
+        jprint(tpl.mapping)
+    else:
+        print("No template file specified!")
+    instance = tpl.mapping["instance"] # for legacy code
 
+
+    ueclient = UEClient(ueurl=ueURL, prefix=prefix, template=tpl)
+
+    print("-------")
     print("Firebase namespace (instance): /" + instance)
     print("OSC Server:", oscServerHost, oscServerPort)
     print("UE Client:", ueClientHost, ueClientPort)
@@ -77,24 +81,18 @@ if __name__=="__main__":
     print("Message file root:", messageRoot)
 
 
+
     # Firebase event listener
     # Uses firebase-admin library
-    #
-    # Firebase Configuration
-    with open("xanadu-secret-firebase-forwarder.json") as f:
-        firebase_config = json.load(f)
 
-
-    # Load Firebase credentials
     import firebase_admin
     from firebase_admin import credentials, db  # pip install firebase-admin
-
+    with open("xanadu-secret-firebase-forwarder.json") as f:
+        firebase_config = json.load(f)
     cred = credentials.Certificate("xanadu-secret-f5762-firebase-adminsdk-9oc2p-1fb50744fa.json")
     firebase_admin.initialize_app(cred, {
         'databaseURL': firebase_config['databaseURL']
     })
-
-
 
     # https://console.firebase.google.com/u/0/project/xanadu-f5762/database/xanadu-f5762-default-rtdb/data
     # Reference the database path to monitor
@@ -128,7 +126,7 @@ if __name__=="__main__":
                                 #print("glom")
                                 spec=Assign(v["parsing"]["spec"], event.data)
                                 _ = glom(v, spec)
-                        sendMessage(v["action"]["data"], template=True)
+                        ueclient.sendMessage(v["action"]["data"], template=True)
         fbmsg+= 1
 
     # Firebase
@@ -229,63 +227,6 @@ if __name__=="__main__":
                 fblisteners.pop(args[0], None)
             print("fblisteners",fblisteners)
 
-    # Replace a specific parameter
-    # setParam(msg, "bNewVisibility", True if args.value.lower() in ('true') else False)
-
-    def sendMessage(msgs, url=ueURL, template=False):
-        result = []
-        if not isinstance(msgs, list):
-            msgs = [msgs]
-
-        for msg in msgs:
-            # TODO: Should send return codes back
-            print(tsformat(datetime.now()), ">", url + msg["request"])
-            if "body" in msg:
-                headers = {'Content-Type': 'application/json'}
-                if template:
-                    # TODO: More robust templating
-                    if "objectPath" in msg["body"]: msg["body"]["objectPath"] = msg["body"]["objectPath"].replace(
-                        "{{prefix}}", prefix)
-                jprint(msg["body"])
-                data = json.dumps(msg["body"])
-            else:
-                headers = None
-                data = None
-            if "method" in msg:
-                if msg["method"] == "get":
-                    r = requests.get(url + msg["request"], data=data, headers=headers)
-            else:
-                r = requests.put(url + msg["request"], data=data, headers=headers)
-            print(tsformat(datetime.now()), "<", r.status_code, r.reason)
-            # jprint(json.loads(r.text))
-            result.append(json.loads(r.text))
-        return (result)
-
-
-    def sendFromFile(msgfile, template=True):
-        print("sendFromFile", msgfile)
-        with open(msgfile) as json_file:
-            msg = json.load(json_file)
-        return sendMessage(msg, template=template)
-
-
-    # TODO: Parse arbitrary key-value pairs and/or JSON
-    def sendFromFileWithReplacement(msgfile, args, template=True):
-        print("sendFromFileWithReplacement", msgfile)
-        # Need casting?  Quick boolean fix
-        if args[3].lower() == 'true':
-            v = True
-        elif args[3].lower() == 'false':
-            v = False
-        else:
-            v = args[3]
-        with open(msgfile) as json_file:
-            msg = json.load(json_file)
-
-        setParam(msg, args[2], v)
-        # print(msg)
-        return sendMessage(msg, template=template)
-
 
     # Threading OSC Server
     def handleOSC_UE(addr, *args):
@@ -303,7 +244,7 @@ if __name__=="__main__":
                     if not os.path.splitext(msgfile)[1]:
                         msgfile += '.json'
                     # TODO: Asynchronous queue
-                    result = sendFromFile(msgfile)
+                    result = ueclient.sendFromFile(msgfile)
                     jprint(result)
 
                 if (args[0] == "sendFromFileWithReplacement"):
@@ -311,7 +252,7 @@ if __name__=="__main__":
                     if not os.path.splitext(msgfile)[1]:
                         msgfile += '.json'
                     # TODO: Asynchronous queue, maybe use /remote/batch ?
-                    result = sendFromFileWithReplacement(msgfile, args)
+                    result = ueclient.sendFromFileWithReplacement(msgfile, args)
                     jprint(result)
 
 
@@ -360,10 +301,15 @@ if __name__=="__main__":
 
     if not args.skipuecheck:
         print("---- Testing connectivity to UE")
-        result = sendFromFile(os.path.join(internalMessageRoot,"checkConnectivity.json"),template=False)
+        result = ueclient.sendFromFile(os.path.join(internalMessageRoot,"checkConnectivity.json"),template=False, suppressBodyPrint = True)
         # TODO: Check for timeouts
         if result is not None:
-            print("Successful")
+            print("Connectivity Successful")
+            result = ueclient.sendFromFile(os.path.join(internalMessageRoot, "checkWorld.json"), template=True, suppressBodyPrint = True)
+            if result is not None:
+                print("World accessible:", result)
+            else:
+                print("**World not accessible!")
         #jprint(result)
 
     if args.runosc is not None:
@@ -371,6 +317,8 @@ if __name__=="__main__":
         handleOSC_UE (oscargs[0], *oscargs[1:])
         sys.exit(0)
 
+    # Listen for both our specific instance and the template placeholder
+    #
     dispatcher = dispatcher.Dispatcher()
     dispatcher.map(f"/{instance}/ue5/*", handleOSC_UE)
     dispatcher.map(f"/{instance}/kl/*", handleOSC_KL)  # Kleroterion
@@ -446,8 +394,6 @@ if __name__=="__main__":
     tcpserver_thread = threading.Thread(target=lambda: tcpserver.serve_forever())
     tcpserver_thread.start()
 
-
-
     udpserver = osc_server.ThreadingOSCUDPServer(
         (oscServerHost,oscServerPort), dispatcher)
     print("Awaiting OSC via udp on {}".format(udpserver.server_address))
@@ -460,123 +406,8 @@ if __name__=="__main__":
 
 
 if (__name__=="__main__" and args.gui) or __name__=="__mp_main__":
-    #ui.button('enlarge', on_click=lambda: app.native.main_window.resize(2000, 1500))
-    ui.add_css('''
-               .jse-theme-dark {
-      --jse-theme: dark;
-
-      /* over all fonts, sizes, and colors */
-      --jse-theme-color: #2f6dd0;
-      --jse-theme-color-highlight: #467cd2;
-      --jse-background-color: #1e1e1e;
-      --jse-text-color: #d4d4d4;
-      --jse-text-color-inverse: #4d4d4d;
-
-      /* main, menu, modal */
-      --jse-main-border: 1px solid #4f4f4f;
-      --jse-menu-color: #fff;
-      --jse-modal-background: #2f2f2f;
-      --jse-modal-overlay-background: rgba(0, 0, 0, 0.5);
-      --jse-modal-code-background: #2f2f2f;
-
-      /* tooltip in text mode */
-      --jse-tooltip-color: var(--jse-text-color);
-      --jse-tooltip-background: #4b4b4b;
-      --jse-tooltip-border: 1px solid #737373;
-      --jse-tooltip-action-button-color: inherit;
-      --jse-tooltip-action-button-background: #737373;
-
-      /* panels: navigation bar, gutter, search box */
-      --jse-panel-background: #333333;
-      --jse-panel-background-border: 1px solid #464646;
-      --jse-panel-color: var(--jse-text-color);
-      --jse-panel-color-readonly: #737373;
-      --jse-panel-border: 1px solid #3c3c3c;
-      --jse-panel-button-color-highlight: #e5e5e5;
-      --jse-panel-button-background-highlight: #464646;
-
-      /* navigation-bar */
-      --jse-navigation-bar-background: #656565;
-      --jse-navigation-bar-background-highlight: #7e7e7e;
-      --jse-navigation-bar-dropdown-color: var(--jse-text-color);
-
-      /* context menu */
-      --jse-context-menu-background: #4b4b4b;
-      --jse-context-menu-background-highlight: #595959;
-      --jse-context-menu-separator-color: #595959;
-      --jse-context-menu-color: var(--jse-text-color);
-      --jse-context-menu-pointer-background: #737373;
-      --jse-context-menu-pointer-background-highlight: #818181;
-      --jse-context-menu-pointer-color: var(--jse-context-menu-color);
-
-      /* contents: json key and values */
-      --jse-key-color: #9cdcfe;
-      --jse-value-color: var(--jse-text-color);
-      --jse-value-color-number: #b5cea8;
-      --jse-value-color-boolean: #569cd6;
-      --jse-value-color-null: #569cd6;
-      --jse-value-color-string: #ce9178;
-      --jse-value-color-url: #ce9178;
-      --jse-delimiter-color: #949494;
-      --jse-edit-outline: 2px solid var(--jse-text-color);
-
-      /* contents: selected or hovered */
-      --jse-selection-background-color: #464646;
-      --jse-selection-background-inactive-color: #333333;
-      --jse-hover-background-color: #343434;
-      --jse-active-line-background-color: rgba(255, 255, 255, 0.06);
-      --jse-search-match-background-color: #343434;
-
-      /* contents: section of collapsed items in an array */
-      --jse-collapsed-items-background-color: #333333;
-      --jse-collapsed-items-selected-background-color: #565656;
-      --jse-collapsed-items-link-color: #b2b2b2;
-      --jse-collapsed-items-link-color-highlight: #ec8477;
-
-      /* contents: highlighting of search results */
-      --jse-search-match-color: #724c27;
-      --jse-search-match-outline: 1px solid #966535;
-      --jse-search-match-active-color: #9f6c39;
-      --jse-search-match-active-outline: 1px solid #bb7f43;
-
-      /* contents: inline tags inside the JSON document */
-      --jse-tag-background: #444444;
-      --jse-tag-color: #bdbdbd;
-
-      /* contents: table */
-      --jse-table-header-background: #333333;
-      --jse-table-header-background-highlight: #424242;
-      --jse-table-row-odd-background: rgba(255, 255, 255, 0.1);
-
-      /* controls in modals: inputs, buttons, and `a` */
-      --jse-input-background: #3d3d3d;
-      --jse-input-border: var(--jse-main-border);
-      --jse-button-background: #808080;
-      --jse-button-background-highlight: #7a7a7a;
-      --jse-button-color: #e0e0e0;
-      --jse-button-secondary-background: #494949;
-      --jse-button-secondary-background-highlight: #5d5d5d;
-      --jse-button-secondary-background-disabled: #9d9d9d;
-      --jse-button-secondary-color: var(--jse-text-color);
-      --jse-a-color: #55abff;
-      --jse-a-color-highlight: #4387c9;
-
-      /* svelte-select */
-      --jse-svelte-select-background: #3d3d3d;
-      --jse-svelte-select-border: 1px solid #4f4f4f;
-      --list-background: #3d3d3d;
-      --item-hover-bg: #505050;
-      --multi-item-bg: #5b5b5b;
-      --input-color: #d4d4d4;
-      --multi-clear-bg: #8a8a8a;
-      --multi-item-clear-icon-color: #d4d4d4;
-      --multi-item-outline: 1px solid #696969;
-      --list-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.4);
-
-      /* color picker */
-      --jse-color-picker-background: #656565;
-      --jse-color-picker-border-box-shadow: #8c8c8c 0 0 0 1px;
-    }''')
+    from hermes.gui.theme import dark_theme
+    ui.add_css(dark_theme)
 
     msgfile="messages/test_sequence.json"
     with open(msgfile) as json_file:
@@ -587,17 +418,3 @@ if (__name__=="__main__" and args.gui) or __name__=="__mp_main__":
     ui.dark_mode(True)
     ui.run(native=True, dark=True, window_size=(1000, 800), fullscreen=False)
 
-
-#
-# # Load JSON file
-# msgfile = "messages/test.json"
-# with open(msgfile) as json_file:
-#     msg = json.load(json_file)
-#
-# # fire request
-# print(tsformat(datetime.now()), ">", url+msg["request"])
-# jprint(msg["body"])
-# headers = {'Content-Type': 'application/json'}
-# r = requests.put(url+msg["request"], data=json.dumps(msg["body"]), headers=headers)
-# print(tsformat(datetime.now()), "<", r.status_code, r.reason)
-# jprint(json.loads(r.text))
