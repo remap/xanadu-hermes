@@ -1,1 +1,4 @@
 
+[submodule "Hermes/firebase"]
+	path = Hermes/firebase
+	url = git@github.com:remap/firebase.git
