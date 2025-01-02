@@ -67,6 +67,7 @@ if __name__=="__main__":
         jprint(tpl.mapping)
         instance = tpl.mapping["instance"]  # for legacy code
     else:
+        tpl=None
         print("No template file specified!")
 
     print("Instance:", instance)
