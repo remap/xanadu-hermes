@@ -12,3 +12,6 @@ def setParam(json,field,value):
 def splitHostPort(s):
     host,port = s.split(":")
     return (host,int(port))
+def splitInstanceHostPort(s):
+    instance,host,port = s.split(":")
+    return (instance,host,int(port))

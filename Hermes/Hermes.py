@@ -17,19 +17,21 @@ import os
 import sys
 from datetime import datetime, timedelta
 import threading
+from pathlib import Path
 from nicegui import app, ui
 
 import socketserver, socket
 
 
-from hermes.utils import jprint, tsformat, setParam, splitHostPort
+from hermes.utils import jprint, tsformat, setParam, splitInstanceHostPort, splitHostPort
 from hermes.ue.UEClient import UEClient
 
 if __name__=="__main__":
 
     # Use argparse to handle command line arguments
     parser = argparse.ArgumentParser(description='Send a command to Unreal Engine via Remote Control API')
-    parser.add_argument('-ueclient', type=str, help='unreal client host:port', default="127.0.0.1:30010")
+    parser.add_argument('-ueclient', type=str, help='unreal client host:port', default="ue5:127.0.0.1:30010")
+    parser.add_argument('-uemulticlient', type=str, help='load unreal clients from config file', default=None)
     parser.add_argument('-oscserver', type=str, help='OSC server host:port', default="0.0.0.0:8000")
     parser.add_argument('-skipuecheck', action='store_true', help='Skip checking for ue connectivity first')
     parser.add_argument('-instance', required=False, type=str, help='instance name, will override template value')
@@ -45,9 +47,6 @@ if __name__=="__main__":
     ## OSC
     (oscServerHost, oscServerPort) = splitHostPort(args.oscserver)
 
-    ## UE5
-    (ueClientHost, ueClientPort) = splitHostPort(args.ueclient)
-    ueURL = "http://" + ueClientHost + ":" + str(ueClientPort)
 
     prefix_editor = "/Game/_Sets/Xanadu_Fall24_v001/"
     prefix_PIE = "/Game/_Sets/Xanadu_Fall24_v001/UEDPIE_0_"
@@ -69,16 +68,39 @@ if __name__=="__main__":
     else:
         print("No template file specified!")
     instance = tpl.mapping["instance"] # for legacy code
-
-
-    ueclient = UEClient(ueurl=ueURL, prefix=prefix, template=tpl)
+    print("Instance:", instance)
 
     print("-------")
     print("Firebase namespace (instance): /" + instance)
     print("OSC Server:", oscServerHost, oscServerPort)
-    print("UE Client:", ueClientHost, ueClientPort)
-    print("UE Path Prefix:", prefix)
     print("Message file root:", messageRoot)
+
+
+    ## UE5
+    ueclient = {}
+
+    if args.uemulticlient is not None:
+        path = Path(args.uemulticlient)
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        for ueInstance in data:
+            ueURL = "http://" + data[ueInstance]["host"] + ":" + str(data[ueInstance]["port"])
+            print(f"UE ({ueInstance}) client on {data[ueInstance]['host']}:{data[ueInstance]['port']}")
+            print(f"UE Path Prefix:", data[ueInstance]["prefix"])
+            ueclient[ueInstance] = UEClient(ueurl=ueURL, instance=ueInstance, prefix=data[ueInstance]["prefix"], template=tpl,
+                                            internalMessageRoot=internalMessageRoot)
+
+    # use instance "any" to send any instance to an output
+    # Single instance from command line (legacy)
+    (ueInstance, ueClientHost, ueClientPort) = splitInstanceHostPort(args.ueclient)
+    if ueInstance in ueclient:
+        print("** Warning: command line overriding multiclient")
+    ueURL = "http://" + ueClientHost + ":" + str(ueClientPort)
+
+    print(f"UE ({ueInstance}) client on {ueClientHost}:{ueClientPort}")
+    print(f"UE Path Prefix:", prefix)
+    ueclient[ueInstance] = UEClient( ueurl=ueURL, instance=ueInstance,prefix=prefix, template=tpl,
+                                     internalMessageRoot=internalMessageRoot)
 
 
 
@@ -230,30 +252,36 @@ if __name__=="__main__":
 
     # Threading OSC Server
     def handleOSC_UE(addr, *args):
-        print("\n----- OSC in", datetime.today().strftime('%y-%m-%d %H:%M:%S'))
+        print("\n----- OSC <", datetime.today().strftime('%y-%m-%d %H:%M:%S'))
         print("  ", addr)
+        addrcomps = addr.split("/")
         if len(args) > 0:
             print("    k:", args[0])
             if len(args) > 1:
                 print("    v:", args[1:])
 
+
                 # TODO: Check for /xanadu/ue5/call
 
-                if (args[0] == "sendFromFile"):
-                    msgfile = os.path.join(messageRoot, args[1])
-                    if not os.path.splitext(msgfile)[1]:
-                        msgfile += '.json'
-                    # TODO: Asynchronous queue
-                    result = ueclient.sendFromFile(msgfile)
-                    jprint(result)
+                for ueInstance in ueclient:
+                    # any always sends
+                    if ueInstance=="any" or ueInstance == addrcomps[-2]:
+                        uec = ueclient[ueInstance]
+                        if (args[0] == "sendFromFile"):
+                            msgfile = os.path.join(messageRoot, args[1])
+                            if not os.path.splitext(msgfile)[1]:
+                                msgfile += '.json'
+                            # TODO: Asynchronous queue
+                            (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=True)
+                            jprint(result)
 
-                if (args[0] == "sendFromFileWithReplacement"):
-                    msgfile = os.path.join(messageRoot, args[1])
-                    if not os.path.splitext(msgfile)[1]:
-                        msgfile += '.json'
-                    # TODO: Asynchronous queue, maybe use /remote/batch ?
-                    result = ueclient.sendFromFileWithReplacement(msgfile, args)
-                    jprint(result)
+                        if (args[0] == "sendFromFileWithReplacement"):
+                            msgfile = os.path.join(messageRoot, args[1])
+                            if not os.path.splitext(msgfile)[1]:
+                                msgfile += '.json'
+                            # TODO: Asynchronous queue, maybe use /remote/batch ?
+                            (rc,result) = uec.sendFromFileWithReplacement(msgfile, args)
+                            jprint(result)
 
 
     ## Experimental TCP support tested with QLab 5
@@ -300,17 +328,8 @@ if __name__=="__main__":
             print("\nfinished tcp {}:".format(self.client_address[0]), log)
 
     if not args.skipuecheck:
-        print("---- Testing connectivity to UE")
-        result = ueclient.sendFromFile(os.path.join(internalMessageRoot,"checkConnectivity.json"),template=False, suppressBodyPrint = True)
-        # TODO: Check for timeouts
-        if result is not None:
-            print("Connectivity Successful")
-            result = ueclient.sendFromFile(os.path.join(internalMessageRoot, "checkWorld.json"), template=True, suppressBodyPrint = True)
-            if result is not None:
-                print("World accessible:", result)
-            else:
-                print("**World not accessible!")
-        #jprint(result)
+        for ueInstance in ueclient:
+            ueclient[ueInstance].checkConnection()
 
     if args.runosc is not None:
         oscargs = args.runosc.split(" ")
