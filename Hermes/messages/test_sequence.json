@@ -7,7 +7,7 @@
       "objectPath": "/Script/EditorScriptingUtilities.Default__EditorAssetLibrary",
       "functionName": "LoadAsset",
       "parameters": {
-        "AssetPath": "/Game/Sequences/jbTestSequence.jbTestSequence"
+        "AssetPath": "/Game/_Sets/Fall_24/ML_Xanadu_JB.ML_Xanadu_JB:PersistentLevel.LevelSequenceActor_2"
       },
       "generateTransaction": true
     }
@@ -19,7 +19,7 @@
       "objectPath": "/Script/LevelSequenceEditor.Default__LevelSequenceEditorBlueprintLibrary",
       "functionName": "OpenLevelSequence",
       "parameters": {
-        "LevelSequence": "/Game/Sequences/jbTestSequence.jbTestSequence"
+        "LevelSequence": "/Game/_Sets/Fall_24/ML_Xanadu_JB.ML_Xanadu_JB:PersistentLevel.LevelSequenceActor_2"
       },
       "generateTransaction": true
     }
