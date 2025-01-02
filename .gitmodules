@@ -1,0 +1,3 @@
+[submodule "Hermes/--force"]
+	path = Hermes/--force
+	url = git@github.com:remap/firebase.git
