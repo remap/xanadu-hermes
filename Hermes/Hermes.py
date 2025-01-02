@@ -65,9 +65,10 @@ if __name__=="__main__":
         if instance is not None: tpl.add("instance",instance)
         print(f"Template variables from {args.template}")
         jprint(tpl.mapping)
+        instance = tpl.mapping["instance"]  # for legacy code
     else:
         print("No template file specified!")
-    instance = tpl.mapping["instance"] # for legacy code
+
     print("Instance:", instance)
 
     print("-------")
