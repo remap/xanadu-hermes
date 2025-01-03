@@ -1,4 +1,5 @@
 xanadu-secret-*
+.qlab5backup
 # PyCharm
 .idea/
 .venv/
