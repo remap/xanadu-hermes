@@ -6,7 +6,10 @@
     "objectPath": "{{prefix}}LSL_Xanadu_Base_v001.LSL_Xanadu_Base_v001:PersistentLevel.StaticMeshActor_0:StaticMeshComponent0",
     "functionName": "SetVisibility",
     "parameters": {
-      "bNewVisibility": false
+      "bNewVisibility": "{{arg1}}",
+      "test": "{{arg2}}",
+      "test2": "{{arg3}}",
+      "test3": "{{arg4}}"
     },
     "generateTransaction" : true
   }

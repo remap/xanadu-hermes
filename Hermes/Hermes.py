@@ -264,6 +264,12 @@ if __name__=="__main__":
 
 
                 # TODO: Check for /xanadu/ue5/call
+                templates = []
+                if len(args) > 2:
+                    if (len(args[2:]) % 2 != 0): print("    Warning: odd number of kv pair, one will be dropped from templating")
+                    pairs = dict(zip(*[iter(args[2:])] * 2))
+                    templates.append(Template(pairs))
+                    print("    templates:", [str(t) for t in templates])
 
                 for ueInstance in ueclient:
                     # any always sends
@@ -274,16 +280,16 @@ if __name__=="__main__":
                             if not os.path.splitext(msgfile)[1]:
                                 msgfile += '.json'
                             # TODO: Asynchronous queue
-                            (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=True)
+                            (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates)
                             jprint(result)
 
-                        if (args[0] == "sendFromFileWithReplacement"):
-                            msgfile = os.path.join(messageRoot, args[1])
-                            if not os.path.splitext(msgfile)[1]:
-                                msgfile += '.json'
-                            # TODO: Asynchronous queue, maybe use /remote/batch ?
-                            (rc,result) = uec.sendFromFileWithReplacement(msgfile, args)
-                            jprint(result)
+                        # if (args[0] == "sendFromFileWithReplacement"):
+                        #     msgfile = os.path.join(messageRoot, args[1])
+                        #     if not os.path.splitext(msgfile)[1]:
+                        #         msgfile += '.json'
+                        #     # TODO: Asynchronous queue, maybe use /remote/batch ?
+                        #     (rc,result) = uec.sendFromFileWithReplacement(msgfile, args)
+                        #     jprint(result)
 
 
     ## Experimental TCP support tested with QLab 5

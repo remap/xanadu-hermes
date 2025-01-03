@@ -17,6 +17,10 @@ class Template:
 
     def __init__(self, mapping: dict[str, Any]) -> None:
         self.mapping = mapping
+        self.replacequoted = True   # will replace floats, ints, bools that are quoted (to allow {{}} in JSON) with the appropriate type
+
+    def __str__(self):
+        return f"Template({self.mapping})"
 
     @classmethod
     def from_json_file(cls, json_file: str | Path) -> Template:
@@ -69,6 +73,25 @@ class Template:
         """
         return self.mapping.pop(key, None) is not None
 
+    def convert(self, value):
+        lower_str = value.lower()
+        if lower_str == "true":
+            return True
+        elif lower_str == "false":
+            return False
+
+        try:
+            return int(value)
+        except ValueError:
+            pass
+
+        try:
+            return float(value)
+        except ValueError:
+            pass
+
+        return value
+
     def replace_in_dict(self, data: Any) -> Any:
         """
         Recursively replace string values in nested dictionaries (and lists)
@@ -86,7 +109,10 @@ class Template:
             return [self.replace_in_dict(item) for item in data]
         elif isinstance(data, str):
             # Perform template replacement on a plain string
-            return self.replace(data)
+            value = self.replace(data)
+            if self.replacequoted:
+                value = self.convert(value)
+            return value
         else:
             # Other types (int, float, None, etc.) - no change
             return data
