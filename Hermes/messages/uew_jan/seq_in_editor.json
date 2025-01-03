@@ -7,7 +7,7 @@
       "objectPath": "/Script/EditorScriptingUtilities.Default__EditorAssetLibrary",
       "functionName": "LoadAsset",
       "parameters": {
-        "AssetPath": "/Game/_Sets/Fall_24/LevelSequences/SEQ_MoveVenus.SEQ_MoveVenus"
+        "AssetPath": "{{seq}}"
       },
       "generateTransaction": true
     }
@@ -19,7 +19,7 @@
       "objectPath": "/Script/LevelSequenceEditor.Default__LevelSequenceEditorBlueprintLibrary",
       "functionName": "OpenLevelSequence",
       "parameters": {
-        "LevelSequence": "/Game/_Sets/Fall_24/LevelSequences/SEQ_MoveVenus.SEQ_MoveVenus"
+        "LevelSequence": "{{seq}}"
       },
       "generateTransaction": true
     }

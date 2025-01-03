@@ -1,0 +1,13 @@
+  {
+    "description": "Set the rate",
+    "_reference": "https://github.com/EpicGames/UnrealEngine/blob/585df42eb3a391efd295abd231333df20cddbcf3/Engine/Source/Runtime/LevelSequence/Private/LevelSequenceActor.cpp#L85",
+    "request": "/remote/object/call",
+    "body": {
+      "objectPath": "{{actor}}.AnimationPlayer",
+      "functionName": "SetPlayRate",
+      "parameters": {
+        "PlayRate": "{{rate}}"
+      },
+      "generateTransaction": true
+    }
+  }

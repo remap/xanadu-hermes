@@ -1,0 +1,10 @@
+  {
+    "description": "Parameter less command shortcut ",
+    "_reference": "https://github.com/EpicGames/UnrealEngine/blob/585df42eb3a391efd295abd231333df20cddbcf3/Engine/Source/Runtime/MovieScene/Public/MovieSceneSequencePlayer.h#L176",
+    "request": "/remote/object/call",
+    "body": {
+      "objectPath": "{{actor}}.AnimationPlayer",
+      "functionName": "{{verb}}",
+      "generateTransaction": true
+    }
+  }
