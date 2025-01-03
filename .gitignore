@@ -1,6 +1,6 @@
 xanadu-secret-*
 *.qlab5backup
-Icon\r
+backups/Icon*
 
 # PyCharm
 .idea/
