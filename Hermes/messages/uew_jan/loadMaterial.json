@@ -1,0 +1,9 @@
+{
+  "description": "Load material",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "Download",
+    "parameters" : {"url":  "{{url}}"}
+  }
+}

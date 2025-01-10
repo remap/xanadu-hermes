@@ -5,7 +5,7 @@
     "objectPath": "{{hermes_world}}",
     "functionName": "ApplySnapshot",
     "parameters": {
-        "Snapshot":  "/Game/LevelSnapshots/ML_Xanadu_JB/2024-12-31/ML_Xanadu_JB_original_desaturate.ML_Xanadu_JB_original_desaturate"
+        "Snapshot":  "{{snapshot}}"
     },
     "transaction": true
   }

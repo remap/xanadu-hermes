@@ -26,11 +26,15 @@ import socketserver, socket
 from hermes.utils import jprint, tsformat, setParam, splitInstanceHostPort, splitHostPort
 from hermes.ue.UEClient import UEClient
 
+UE_JSON_PKG_PATH = True  # enable   a.b.c => a/b/c for sendFile
+UE_JSON_PKG_PATH_DEFAULT = "_default.json"  # use this if path resolves to director
+
+
 if __name__=="__main__":
 
     # Use argparse to handle command line arguments
     parser = argparse.ArgumentParser(description='Send a command to Unreal Engine via Remote Control API')
-    parser.add_argument('-ueclient', type=str, help='unreal client host:port', default="ue5:127.0.0.1:30010")
+    parser.add_argument('-ueclient', type=str, help='unreal client host:port', default=None)
     parser.add_argument('-uemulticlient', type=str, help='load unreal clients from config file', default=None)
     parser.add_argument('-oscserver', type=str, help='OSC server host:port', default="0.0.0.0:8000")
     parser.add_argument('-skipuecheck', action='store_true', help='Skip checking for ue connectivity first')
@@ -48,10 +52,10 @@ if __name__=="__main__":
     (oscServerHost, oscServerPort) = splitHostPort(args.oscserver)
 
 
-    prefix_editor = "/Game/_Sets/Xanadu_Fall24_v001/"
-    prefix_PIE = "/Game/_Sets/Xanadu_Fall24_v001/UEDPIE_0_"
-    prefix = prefix_PIE
-
+    # prefix_editor = "/Game/_Sets/Xanadu_Fall24_v001/"
+    # prefix_PIE = "/Game/_Sets/Xanadu_Fall24_v001/UEDPIE_0_"
+    # prefix = prefix_PIE
+    #
 
 
     ##  JSON
@@ -64,8 +68,10 @@ if __name__=="__main__":
         tpl = Template.from_json_file(args.template)
         if instance is not None: tpl.add("instance",instance)
         print(f"Template variables from {args.template}")
-        jprint(tpl.mapping)
-        instance = tpl.mapping["instance"]  # for legacy code
+        instance = tpl["instance"]  # for legacy code
+        jprint(tpl.mapping)  # should not expose?
+        prefix = tpl["prefix"] # also legacy
+
     else:
         tpl=None
         print("No template file specified!")
@@ -81,28 +87,58 @@ if __name__=="__main__":
     ## UE5
     ueclient = {}
 
+    def reviseTemplateForPIE(newtpl):
+        if "world" in newtpl:
+            parts = newtpl["world"].rsplit("/", 1)
+            parts[-1] = newtpl["pie"] + parts[-1]
+            newtpl["world"] = "/".join(parts)
+        if "prefix" in newtpl:
+            newtpl["prefix"] += newtpl["pie"]
+        print("Revised template for PIE", newtpl["world"], newtpl["prefix"])
+
     if args.uemulticlient is not None:
         path = Path(args.uemulticlient)
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
         for ueInstance in data:
+
+            # whether to process at all
+            if "load" in data[ueInstance]:
+                if data[ueInstance]["load"]==False: continue
+
+            #connectivity check
+            check=True
+            if "check" in data[ueInstance]:
+                if data[ueInstance]["check"]==False: check=False
+
             ueURL = "http://" + data[ueInstance]["host"] + ":" + str(data[ueInstance]["port"])
             print(f"UE ({ueInstance}) client on {data[ueInstance]['host']}:{data[ueInstance]['port']}")
-            print(f"UE Path Prefix:", data[ueInstance]["prefix"])
-            ueclient[ueInstance] = UEClient(ueurl=ueURL, instance=ueInstance, prefix=data[ueInstance]["prefix"], template=tpl,
-                                            internalMessageRoot=internalMessageRoot)
+            #print(f"UE ({ueInstance}) Path Prefix:", data[ueInstance]["prefix"])
+
+            newtpl = tpl.copy() #fix extra copy?
+            if "isPIE" in data[ueInstance] and data[ueInstance]["isPIE"] and "pie" in newtpl:
+                reviseTemplateForPIE(newtpl)
+            #print(newtpl)
+            ueclient[ueInstance] = UEClient(ueurl=ueURL, instance=ueInstance, prefix=prefix, template=newtpl,
+                                            internalMessageRoot=internalMessageRoot, connectivityCheck=check)
 
     # use instance "any" to send any instance to an output
     # Single instance from command line (legacy)
-    (ueInstance, ueClientHost, ueClientPort) = splitInstanceHostPort(args.ueclient)
-    if ueInstance in ueclient:
-        print("** Warning: command line overriding multiclient")
-    ueURL = "http://" + ueClientHost + ":" + str(ueClientPort)
+    if args.ueclient is not None:
+        (ueInstance, ueClientHost, ueClientPort) = splitInstanceHostPort(args.ueclient)
+        if ueInstance in ueclient:
+            print("** Warning: command line overriding multiclient")
+        ueURL = "http://" + ueClientHost + ":" + str(ueClientPort)
 
-    print(f"UE ({ueInstance}) client on {ueClientHost}:{ueClientPort}")
-    print(f"UE Path Prefix:", prefix)
-    ueclient[ueInstance] = UEClient( ueurl=ueURL, instance=ueInstance,prefix=prefix, template=tpl,
-                                     internalMessageRoot=internalMessageRoot)
+        print(f"UE ({ueInstance}) client on {ueClientHost}:{ueClientPort}")
+        #print(f"UE ({ueInstance}) Path Prefix:", prefix)
+
+        newtpl = tpl.copy()
+        if "isPIE" in data[ueInstance] and data[ueInstance]["isPIE"] and "pie" in newtpl:
+            reviseTemplateForPIE(newtpl)
+        #print(newtpl)
+        ueclient[ueInstance] = UEClient( ueurl=ueURL, instance=ueInstance,prefix=prefix, template=newtpl,
+                                         internalMessageRoot=internalMessageRoot, connectivityCheck=True)
 
 
 
@@ -273,10 +309,15 @@ if __name__=="__main__":
 
                 for ueInstance in ueclient:
                     # any always sends
+
                     if ueInstance=="any" or ueInstance == addrcomps[-2]:
                         uec = ueclient[ueInstance]
                         if (args[0] == "sendFromFile"):
                             msgfile = os.path.join(messageRoot, args[1])
+                            if UE_JSON_PKG_PATH:
+                                msgfile = msgfile.replace(".", os.sep)
+                                if os.path.isdir(msgfile) and UE_JSON_PKG_PATH:
+                                     msgfile = os.path.join(msgfile, UE_JSON_PKG_PATH_DEFAULT)
                             if not os.path.splitext(msgfile)[1]:
                                 msgfile += '.json'
                             # TODO: Asynchronous queue

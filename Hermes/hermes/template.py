@@ -3,6 +3,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+import copy
 
 class Template:
     """
@@ -21,6 +22,22 @@ class Template:
 
     def __str__(self):
         return f"Template({self.mapping})"
+
+    def __getitem__(self, index):
+        # This method is called when you do instance[index]
+        return self.mapping[index]
+
+    def __setitem__(self, index, value):
+        self.mapping[index] = value
+
+    def __len__(self):  # should we use this?
+        return len(self.mapping)
+
+    def __contains__(self, item):
+        return item in self.mapping
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     @classmethod
     def from_json_file(cls, json_file: str | Path) -> Template:
