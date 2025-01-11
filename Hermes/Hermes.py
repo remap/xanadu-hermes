@@ -19,11 +19,9 @@ from datetime import datetime, timedelta
 import threading
 from pathlib import Path
 from nicegui import app, ui
-
 import socketserver, socket
 
-
-from hermes.utils import jprint, jformat, tsformat, setParam, splitInstanceHostPort, splitHostPort
+from hermes.utils import ColorFormatter, reviseTemplateForPIE, jformat, setParam, splitInstanceHostPort, splitHostPort
 from hermes.ue.UEClient import UEClient
 
 UE_JSON_PKG_PATH = True  # enable   a.b.c => a/b/c for sendFile
@@ -32,59 +30,13 @@ UE_JSON_PKG_PATH_DEFAULT = "_default.json"  # use this if path resolves to direc
 import logging
 import logging.config
 
-class ColorFormatter(logging.Formatter):
-    # Define ANSI escape codes for colors
-    COLORS = {
-        logging.INFO: "\033[97m",    # Default (gray)
-        logging.WARNING: "\033[93m",  # Yellow
-        logging.ERROR: "\033[31m",    # Red
-        logging.CRITICAL: "\033[1;31m",  # Bright Red
-        logging.DEBUG: "\033[37m",    # Grey
-    }
-    RESET = "\033[0m"
-
-    def format(self, record):
-        # Get the color for the log level
-        color = self.COLORS.get(record.levelno, self.RESET)
-        message = super().format(record)
-        # Apply color and reset formatting
-        return f"{color}{message}{self.RESET}"
-
-
 if __name__=="__main__":
 
-
-    logging.config.dictConfig({
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'default': {
-                'format': '[%(asctime)s] %(name)s: %(levelname)s: %(message)s',
-            },
-            'color': {
-                '()' : '__main__.ColorFormatter',
-                'format': '[%(asctime)s] %(name)s: %(levelname)s: %(message)s',
-            },
-        },
-        'handlers': {
-            'console': {
-                'class': 'logging.StreamHandler',
-                'formatter': 'color',
-                'level': 'DEBUG',
-            },
-            'file': {
-                'class': 'logging.FileHandler',
-                'filename': 'app.log',
-                'formatter': 'default',
-                'level': 'INFO',
-            },
-        },
-        'root': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO'
-        },
-    })
-
+    # Setup logger
+    path = Path("logconfig.json")
+    with path.open("r", encoding="utf-8") as f:
+        logconfig = json.load(f)
+    logging.config.dictConfig(logconfig)
     logger = logging.getLogger("main")
     logger.setLevel(logging.DEBUG)
 
@@ -109,14 +61,7 @@ if __name__=="__main__":
     ## OSC
     (oscServerHost, oscServerPort) = splitHostPort(args.oscserver)
 
-
-    # prefix_editor = "/Game/_Sets/Xanadu_Fall24_v001/"
-    # prefix_PIE = "/Game/_Sets/Xanadu_Fall24_v001/UEDPIE_0_"
-    # prefix = prefix_PIE
-    #
-
-
-    ##  JSON
+    ##  Message files
     messageRoot = args.messagedir
     internalMessageRoot = os.path.join("messages", "_internal")
 
@@ -130,7 +75,6 @@ if __name__=="__main__":
         instance = tpl["instance"]  # for legacy code
 #        logger.info(jformat(tpl.mapping)) # should not expose?
         prefix = tpl["prefix"] # also legacy
-
     else:
         tpl=None
         logger.warning("No template file specified!")
@@ -144,14 +88,7 @@ if __name__=="__main__":
     ## UE5
     ueclient = {}
 
-    def reviseTemplateForPIE(newtpl):
-        if "world" in newtpl:
-            parts = newtpl["world"].rsplit("/", 1)
-            parts[-1] = newtpl["pie"] + parts[-1]
-            newtpl["world"] = "/".join(parts)
-        if "prefix" in newtpl:
-            newtpl["prefix"] += newtpl["pie"]
-        logger.info(f"Revised template for PIE {newtpl['world']}, {newtpl['prefix']}")
+
 
     if args.uemulticlient is not None:
         path = Path(args.uemulticlient)
@@ -175,6 +112,7 @@ if __name__=="__main__":
             newtpl = tpl.copy() #fix extra copy?
             if "isPIE" in data[ueInstance] and data[ueInstance]["isPIE"] and "pie" in newtpl:
                 reviseTemplateForPIE(newtpl)
+                logger.info(f"Revised template for PIE {newtpl['world']}, {newtpl['prefix']}")
             #print(newtpl)
             ueclient[ueInstance] = UEClient(ueurl=ueURL, instance=ueInstance, prefix=prefix, template=newtpl,
                                             internalMessageRoot=internalMessageRoot, connectivityCheck=check)
@@ -193,6 +131,7 @@ if __name__=="__main__":
         newtpl = tpl.copy()
         if args.ispie is not None:
             reviseTemplateForPIE(newtpl)
+            logger.info(f"Revised template for PIE {newtpl['world']}, {newtpl['prefix']}")
         #print(newtpl)
         ueclient[ueInstance] = UEClient( ueurl=ueURL, instance=ueInstance,prefix=prefix, template=newtpl,
                                          internalMessageRoot=internalMessageRoot, connectivityCheck=True)
@@ -243,7 +182,7 @@ if __name__=="__main__":
                                 #print("glom")
                                 spec=Assign(v["parsing"]["spec"], event.data)
                                 _ = glom(v, spec)
-                        ueclient.sendMessage(v["action"]["data"], template=True)
+                        ueclient.sendMessage(v["action"]["data"], template=True)  # TODO NEED TO ITERATE! 
         fbmsg+= 1
 
     # Firebase
@@ -331,7 +270,7 @@ if __name__=="__main__":
                 msg = json.load(json_file)
             if not args[0] in fblisteners:
                 fblisteners[args[0]] = {}
-            fblisteners[args[0]][msgfile] = msg
+            fblisteners[args[0]][msgfile] = msg  # TODO: Wrap to hold the client
             logger.debug(f"fblisteners {fblisteners}")
         elif (addr).endswith("/removelisten"):
             logger.debug(f"removelisten {args[0]} {args[1]}")
@@ -386,6 +325,48 @@ if __name__=="__main__":
                 #     jprint(result)
 
 
+
+    if not args.skipuecheck:
+        for ueInstance in ueclient:
+            ueclient[ueInstance].checkConnection()
+
+    if args.runosc is not None:
+        oscargs = args.runosc.split(" ")
+        handleOSC_UE (oscargs[0], *oscargs[1:])
+        sys.exit(0)
+
+    # Listen for both our specific instance and the template placeholder
+    #
+    dispatcher = dispatcher.Dispatcher()
+    dispatcher.map(f"/{instance}/ue5/*", handleOSC_UE)
+    dispatcher.map(f"/{instance}/kl/*", handleOSC_KL)  # Kleroterion
+    dispatcher.map(f"/{instance}/fb/put", handleOSC_FB)  # Generic firebase
+    dispatcher.map(f"/{instance}/fb/post", handleOSC_FB)  # Generic firebase
+    dispatcher.map(f"/{instance}/fb/delete", handleOSC_FB)  # Generic firebase
+    dispatcher.map(f"/{instance}/fb/listen", handleOSC_FB_LISTEN)
+    dispatcher.map(f"/{instance}/fb/removelisten", handleOSC_FB_LISTEN)
+    dispatcher.map("/{{instance}}/ue5/*", handleOSC_UE)
+    dispatcher.map("/{{instance}}/kl/*", handleOSC_KL)  # Kleroterion
+    dispatcher.map("/{{instance}}/fb/put", handleOSC_FB)  # Generic firebase
+    dispatcher.map("/{{instance}}/fb/post", handleOSC_FB)  # Generic firebase
+    dispatcher.map("/{{instance}}/fb/delete", handleOSC_FB)  # Generic firebase
+    dispatcher.map("/{{instance}}/fb/listen", handleOSC_FB_LISTEN)
+    dispatcher.map("/{{instance}}/fb/removelisten", handleOSC_FB_LISTEN)
+
+    # Anon client with token renewal
+    from hermes.fb.anonclient import FBAnonClient
+    fbclient = FBAnonClient(credentialFile="xanadu-secret-f5762-firebase-adminsdk-9oc2p-1fb50744fa.json", dbURL='https://xanadu-f5762-default-rtdb.firebaseio.com')
+    firebase = fbclient.getFB()
+
+
+    # firebase listener
+    # Run the listener in a separate thread
+    listener_thread = threading.Thread(target=lambda: ref.listen(firebaseEventListener), daemon=True)
+    logger.info("Listening for firebase events")
+    listener_thread.daemon = True
+    listener_thread.start()
+
+
     ## Experimental TCP support tested with QLab 5
 
     class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
@@ -429,99 +410,26 @@ if __name__=="__main__":
 
             logger.debug(f"finished tcp {self.client_address[0]}:\n{log}")
 
-    if not args.skipuecheck:
-        for ueInstance in ueclient:
-            ueclient[ueInstance].checkConnection()
-
-    if args.runosc is not None:
-        oscargs = args.runosc.split(" ")
-        handleOSC_UE (oscargs[0], *oscargs[1:])
-        sys.exit(0)
-
-    # Listen for both our specific instance and the template placeholder
-    #
-    dispatcher = dispatcher.Dispatcher()
-    dispatcher.map(f"/{instance}/ue5/*", handleOSC_UE)
-    dispatcher.map(f"/{instance}/kl/*", handleOSC_KL)  # Kleroterion
-    dispatcher.map(f"/{instance}/fb/put", handleOSC_FB)  # Generic firebase
-    dispatcher.map(f"/{instance}/fb/post", handleOSC_FB)  # Generic firebase
-    dispatcher.map(f"/{instance}/fb/delete", handleOSC_FB)  # Generic firebase
-    dispatcher.map(f"/{instance}/fb/listen", handleOSC_FB_LISTEN)
-    dispatcher.map(f"/{instance}/fb/removelisten", handleOSC_FB_LISTEN)
-    dispatcher.map("/{{instance}}/ue5/*", handleOSC_UE)
-    dispatcher.map("/{{instance}}/kl/*", handleOSC_KL)  # Kleroterion
-    dispatcher.map("/{{instance}}/fb/put", handleOSC_FB)  # Generic firebase
-    dispatcher.map("/{{instance}}/fb/post", handleOSC_FB)  # Generic firebase
-    dispatcher.map("/{{instance}}/fb/delete", handleOSC_FB)  # Generic firebase
-    dispatcher.map("/{{instance}}/fb/listen", handleOSC_FB_LISTEN)
-    dispatcher.map("/{{instance}}/fb/removelisten", handleOSC_FB_LISTEN)
-
-    from firebase.firebase import firebase as _firebase
-
-
-
-#https://firebase.google.com/docs/database/rest/auth#python
-    import google
-    from google.oauth2 import service_account
-    from google.auth.transport.requests import AuthorizedSession
-    import uuid
-
-    # Define the required scopes
-    scopes = [
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/firebase.database"
-    ]
-
-    # Authenticate a credential with the service account
-    credentials = service_account.Credentials.from_service_account_file(
-        "xanadu-secret-f5762-firebase-adminsdk-9oc2p-1fb50744fa.json", scopes=scopes)
-    # Use the credentials object to authenticate a Requests session.
-    # authed_session = AuthorizedSession(credentials)
-    # response = authed_session.get(
-    #     "https://<DATABASE_NAME>.firebaseio.com/users/ada/name.json")
-
-    # Or, use the token directly, as described in the "Authenticate with an
-    # access token" section below. (not recommended)
-
-    # this lib uses rest calls
-    firebase = _firebase.FirebaseApplication('https://xanadu-f5762-default-rtdb.firebaseio.com')
-    uid = uuid.uuid4()
-    def refresh_fb_token(firebase, uid):
-        # Refresh the token
-        request = google.auth.transport.requests.Request()
-        credentials.refresh(request)
-        access_token = credentials.token
-        expiration_time = credentials.expiry.astimezone()
-        # Print the token and expiration time in local timezone
-        logger.warning(f"Refresh FB Access Token: {access_token[0:25]}... Expiry: {expiration_time}")
-        firebase.setAccessToken(access_token)
-        # Schedule the next refresh in 1 hour
-        threading.Timer(3600, refresh_fb_token, args=[firebase, uid]).start()
-    # Start the first refresh
-    refresh_fb_token(firebase, uid)
-
-    # firebase listener
-    # Run the listener in a separate thread
-    listener_thread = threading.Thread(target=lambda: ref.listen(firebaseEventListener))
-    logger.info("Listening for firebase events")
-    listener_thread.daemon = True
-    listener_thread.start()
-
     #TCP OSC Server
     tcpserver = ThreadedTCPServer((oscServerHost, oscServerPort), ThreadedTCPRequestHandler)
     logger.info(f"(Experimental) Awaiting tcp connections on {tcpserver.server_address}")
-    tcpserver_thread = threading.Thread(target=lambda: tcpserver.serve_forever())
+    tcpserver_thread = threading.Thread(target=lambda: tcpserver.serve_forever(), daemon=True)
     tcpserver_thread.start()
 
     udpserver = osc_server.ThreadingOSCUDPServer(
         (oscServerHost,oscServerPort), dispatcher)
     logger.info(f"Awaiting OSC via udp on {udpserver.server_address}")
 
+    thread=None
     if args.gui:
-        thread = threading.Thread(target=udpserver.serve_forever)
+        thread = threading.Thread(target=udpserver.serve_forever,daemon=True)
         thread.start()
     else:
-        udpserver.serve_forever()
+        try:
+            udpserver.serve_forever()
+        except KeyboardInterrupt:
+            logging.info("Caught keyboard interrupt")
+            os._exit(0)  # TODO: Graceful exit.
 
 
 if (__name__=="__main__" and args.gui) or __name__=="__mp_main__":
