@@ -8,13 +8,11 @@
 # Note that our messages require generateTransaction:true to propagate in multiuser editor, I think.
 
 import requests    # pip install requests
-from pythonosc import dispatcher    # pip install python-osc
+from pythonosc import dispatcher, osc_server   # pip install python-osc
 from pythonosc.osc_message import OscMessage
-from pythonosc import osc_server
 import json
 import argparse
-import os
-import sys
+import os, sys
 from datetime import datetime, timedelta
 import threading
 from pathlib import Path
@@ -23,6 +21,7 @@ import socketserver, socket
 
 from hermes.utils import ColorFormatter, reviseTemplateForPIE, jformat, setParam, splitInstanceHostPort, splitHostPort
 from hermes.ue.UEClient import UEClient
+from hermes.fb.anonclient import FBAnonClient
 
 UE_JSON_PKG_PATH = True  # enable   a.b.c => a/b/c for sendFile
 UE_JSON_PKG_PATH_DEFAULT = "_default.json"  # use this if path resolves to director
@@ -113,6 +112,7 @@ if __name__=="__main__":
             if "isPIE" in data[ueInstance] and data[ueInstance]["isPIE"] and "pie" in newtpl:
                 reviseTemplateForPIE(newtpl)
                 logger.info(f"Revised template for PIE {newtpl['world']}, {newtpl['prefix']}")
+                logger.debug(jformat(newtpl.mapping))
             #print(newtpl)
             ueclient[ueInstance] = UEClient(ueurl=ueURL, instance=ueInstance, prefix=prefix, template=newtpl,
                                             internalMessageRoot=internalMessageRoot, connectivityCheck=check)
@@ -132,6 +132,7 @@ if __name__=="__main__":
         if args.ispie is not None:
             reviseTemplateForPIE(newtpl)
             logger.info(f"Revised template for PIE {newtpl['world']}, {newtpl['prefix']}")
+            logger.debug(jformat(newtpl.mapping))
         #print(newtpl)
         ueclient[ueInstance] = UEClient( ueurl=ueURL, instance=ueInstance,prefix=prefix, template=newtpl,
                                          internalMessageRoot=internalMessageRoot, connectivityCheck=True)
@@ -182,7 +183,7 @@ if __name__=="__main__":
                                 #print("glom")
                                 spec=Assign(v["parsing"]["spec"], event.data)
                                 _ = glom(v, spec)
-                        ueclient.sendMessage(v["action"]["data"], template=True)  # TODO NEED TO ITERATE! 
+                        ueclient.sendMessage(v["action"]["data"], template=True)  # TODO NEED TO ITERATE!
         fbmsg+= 1
 
     # Firebase
@@ -286,26 +287,47 @@ if __name__=="__main__":
     # Threading OSC Server
     def handleOSC_UE(addr, *args):
         addrcomps = addr.split("/")
-        if len(args) < 2:
+        verb = addrcomps[-1]
+
+        if len(args) < 1 and verb !="mapnames":
             logger.error(f"OSC UE < {addr} not enough args {args}")
             return
-        logger.info(f"OSC UE < {addr}\n\tk: {args[0]}\n\tv: {args[1:]}")
+        ueclientset = set(ueclient)
+        targets = set(addrcomps[-2].split(","))
+        sendToAll = "*" in targets
+        haveAny = "any" in ueclient
+        haveAtLeastOne = targets & ueclientset
+        missing = targets - ueclientset
+        if len(missing) > 0:
+            logger.error(f"No available target: {missing}" )
+        noSubName = "ue5" in targets
+        if (noSubName and not haveAny) or (not haveAtLeastOne and not sendToAll):
+            logger.error(f"No available instance for namespace {addr}")
+            return
 
-        # TODO: Check for /xanadu/ue5/call
+        if verb=="mapnames":
+            logger.info(f"OSC UE < mapnames")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
+
+        elif verb=="call":
+            logger.info(f"OSC UE < call {args[0]}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
+        else:
+            logger.error(f"OSC UE unknown verb {verb}")
+            return
+
         templates = []
-        if len(args) > 2:
-            if (len(args[2:]) % 2 != 0): logger.warning("OSC UE odd number of kv pairs, one will be dropped from templating")
-            pairs = dict(zip(*[iter(args[2:])] * 2))
+        if len(args) > 1:
+            if (len(args[1:]) % 2 != 0): logger.warning("OSC UE odd number of kv pairs, one will be dropped from var parsing")
+            pairs = dict(zip(*[iter(args[1:])] * 2))
             templates.append(Template(pairs))
-            logger.debug(f"OSC UE applying templates:{[str(t) for t in templates]}")
+            logger.debug(f"OSC UE parsing dynamic vars:{[str(t) for t in templates]}")
 
+        # Loop through the clients and do the work
         for ueInstance in ueclient:
             # any always sends
-
-            if ueInstance=="any" or ueInstance == addrcomps[-2]:
+            if ueInstance=="any" or ueInstance in targets or sendToAll:
                 uec = ueclient[ueInstance]
-                if (args[0] == "sendFromFile"):
-                    msgfile = os.path.join(messageRoot, args[1])
+                if verb=="call": #(args[0] == "sendFromFile"):
+                    msgfile = os.path.join(messageRoot, args[0])
                     if UE_JSON_PKG_PATH:
                         msgfile = msgfile.replace(".", os.sep)
                         if os.path.isdir(msgfile) and UE_JSON_PKG_PATH:
@@ -314,15 +336,26 @@ if __name__=="__main__":
                         msgfile += '.json'
                     # TODO: Asynchronous queue
                     (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates)
-                    jprint(result)
+                elif verb=="mapnames":
+                    (rc, result) = uec.sendFromFile(os.path.join(internalMessageRoot,"dumpActorNameMap.json"), suppressBodyPrint=True, applyTemplates=True,
+                                                    templates=templates)
+                    if result is not None:
+                        try:
+                            map = json.loads(result[0]["ReturnValue"])
+                            logger.debug(jformat(map))
+                            uec.setActorTemplate(Template(map))
+                        except: # TODO: Fix exception detail
+                            logger.error("Exception in loading map")
+                        # log in uec
+                        #logger.info(jformat(result))
 
-                # if (args[0] == "sendFromFileWithReplacement"):
-                #     msgfile = os.path.join(messageRoot, args[1])
-                #     if not os.path.splitext(msgfile)[1]:
-                #         msgfile += '.json'
-                #     # TODO: Asynchronous queue, maybe use /remote/batch ?
-                #     (rc,result) = uec.sendFromFileWithReplacement(msgfile, args)
-                #     jprint(result)
+                    # if (args[0] == "sendFromFileWithReplacement"):
+                    #     msgfile = os.path.join(messageRoot, args[1])
+                    #     if not os.path.splitext(msgfile)[1]:
+                    #         msgfile += '.json'
+                    #     # TODO: Asynchronous queue, maybe use /remote/batch ?
+                    #     (rc,result) = uec.sendFromFileWithReplacement(msgfile, args)
+                    #     jprint(result)
 
 
 
@@ -354,10 +387,8 @@ if __name__=="__main__":
     dispatcher.map("/{{instance}}/fb/removelisten", handleOSC_FB_LISTEN)
 
     # Anon client with token renewal
-    from hermes.fb.anonclient import FBAnonClient
     fbclient = FBAnonClient(credentialFile="xanadu-secret-f5762-firebase-adminsdk-9oc2p-1fb50744fa.json", dbURL='https://xanadu-f5762-default-rtdb.firebaseio.com')
     firebase = fbclient.getFB()
-
 
     # firebase listener
     # Run the listener in a separate thread
@@ -368,10 +399,8 @@ if __name__=="__main__":
 
 
     ## Experimental TCP support tested with QLab 5
-
     class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         pass
-
 
     class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         def process(self, d):

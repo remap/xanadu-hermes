@@ -4,7 +4,7 @@ import json
 import requests
 import os
 from datetime import datetime, timedelta
-from hermes.utils import tsformat, jprint
+from hermes.utils import tsformat, jformat
 import logging
 
 UE5_DEFAULT_TIMEOUT = 1   # TODO: Arg / slower?
@@ -17,10 +17,15 @@ class UEClient:
         self.instance = instance  # Firebase namespace
         self.prefix = prefix # legacy prefix templater
         self.template = template
+        self.actorTemplate = None
         self.internalMessageRoot = internalMessageRoot
         self.connectivityCheck = connectivityCheck
         self.name = name
         self.logger = logging.getLogger(f"{self.__class__.__name__} {self.instance}")
+        self.logger.setLevel(logging.DEBUG)
+
+    def setActorTemplate(self, t):
+        self.actorTemplate=t
 
     def sendMessage(self, msgs, applyTemplates=False, suppressBodyPrint = False, templates=None, timeout=UE5_DEFAULT_TIMEOUT):
         url = self.ueurl
@@ -39,13 +44,26 @@ class UEClient:
                     # Legacy
                     if "objectPath" in msg["body"]: msg["body"]["objectPath"] = msg["body"]["objectPath"].replace(
                         "{{prefix}}", self.prefix)
-                    # Class template
-                    msg = self.template.replace_in_dict(msg)
-                    # Additional templates
+
+                    # First, apply dynamic variables, which may refer to class variables.
                     if templates is not None:
                         for template in templates:
                             msg = template.replace_in_dict(msg)
-                if not suppressBodyPrint: jprint(msg["body"])
+
+                    # Then, apply the template file, which may be referred to from those variables
+                    msg = self.template.replace_in_dict(msg)
+
+                    # TODO: Do we need to do it again?
+                    # Then, reapply dynamic vars, in case there are pointers in other direction
+                    if templates is not None:
+                        for template in templates:
+                            msg = template.replace_in_dict(msg)
+
+                    # Finally, apply actor name mapping:
+                    if self.actorTemplate is not None:
+                        msg = self.actorTemplate.replace_in_dict(msg)
+
+                if not suppressBodyPrint: self.logger.debug(jformat(msg["body"]))
                 data = json.dumps(msg["body"])
             else:
                 headers = None
@@ -63,14 +81,24 @@ class UEClient:
                 self.logger.error (f"*** UE5 TIMEOUT")
                 return (-1, None)
             if r is not None:
-                self.logger.info(f"< {r.status_code} {r.reason}")
+                if r.status_code==200:
+                    self.logger.info(f"< {r.status_code} {r.reason}")
+                else:
+                    self.logger.error(f"< {r.status_code} {r.reason}")
             else:
                 self.logger.warning (f"< error")
                 return(None)
             # jprint(json.loads(r.text))
             try:
-                result.append(json.loads(r.text))
+                text = json.loads(r.text)
+                result.append(text)
+                if not suppressBodyPrint:
+                    if r.status_code == 200:
+                        self.logger.info(jformat(text))
+                    else:
+                        self.logger.error(jformat(text))
             except:
+                self.logger.error(f"JSON parsing error with output {r.text}")
                 pass # JSON error?
         return (r.status_code, result)
 

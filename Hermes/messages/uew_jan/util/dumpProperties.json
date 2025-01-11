@@ -1,0 +1,8 @@
+{
+  "description": "",
+  "request": "/remote/object/property",
+  "body": {
+    "objectPath": "{{object}}",
+    "access": "READ_ACCESS"
+  }
+}

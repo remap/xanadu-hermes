@@ -4,21 +4,21 @@
     "note": "Should receive a copy of any message (unused)",
     "host": "192.168.1.85",
     "port": 30010,
-    "prefix": "/Game/_Sets/Xanadu_Fall24_v001/",
+    "prefix": "[unused]",
     "check": false
   },
   "ed" : {
     "note": "Editor - including in multi-user sessions",
     "host": "192.168.1.85",
     "port": 30010,
-    "prefix": "/Game/_Sets/Xanadu_Fall24_v001/",
+    "prefix": "[unused]",
     "check": true
   },
   "pie" : {
     "note": "Play in editor",
     "host": "192.168.1.85",
     "port": 30010,
-    "prefix": "/Game/_Sets/Xanadu_Fall24_v001/UEDPIE_0_",
+    "prefix": "[unused]",
     "isPIE": true,
     "check": true
   },
@@ -26,14 +26,14 @@
     "note": "Standalone game, launched frome editor or separantely",
     "host": "192.168.1.85",
     "port": 30110,
-    "prefix": "/Game/_Sets/Xanadu_Fall24_v001/",
+    "prefix": "[unused]",
     "check": true
   },
   "ndc" : {
     "note": "nDisplay display controller",
     "host": "192.168.1.85",
     "port": 30210,
-    "prefix": "/Game/_Sets/Xanadu_Fall24_v001/",
+    "prefix": "[unused]",
     "check": true
   }
 }

@@ -9,7 +9,7 @@
         "StageSettings": {
             "EntireClusterColorGrading": {
                 "ColorGradingSettings": {
-                    "AutoExposureBias" : -15,
+                    "AutoExposureBias" : "{{exposure}}",
                     "bOverride_AutoExposureBias" : true
                 }
             }

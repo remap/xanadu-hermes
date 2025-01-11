@@ -1,5 +1,5 @@
 {
-  "description": "",
+  "description": "Call the Hermes world subsystem function to apply a snapshot to the current world.",
   "request": "/remote/object/call",
   "body": {
     "objectPath": "{{hermes_world}}",
