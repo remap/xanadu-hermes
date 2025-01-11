@@ -5,6 +5,13 @@ def jprint(text):
             print(json.dumps(t, indent=4))
     else:
         print(json.dumps(text, indent=4))
+def jformat(text):
+    if isinstance(text,list):
+        for t in text:
+            return(json.dumps(t, indent=4))
+    else:
+        return(json.dumps(text, indent=4))
+
 def tsformat(ts):
     return ts.strftime("%Y-%m-%d %H:%M:%S.%f")
 def setParam(json,field,value):

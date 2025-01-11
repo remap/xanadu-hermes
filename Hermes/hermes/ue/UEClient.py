@@ -5,8 +5,10 @@ import requests
 import os
 from datetime import datetime, timedelta
 from hermes.utils import tsformat, jprint
+import logging
 
 UE5_DEFAULT_TIMEOUT = 1   # TODO: Arg / slower?
+
 
 class UEClient:
 
@@ -18,7 +20,7 @@ class UEClient:
         self.internalMessageRoot = internalMessageRoot
         self.connectivityCheck = connectivityCheck
         self.name = name
-
+        self.logger = logging.getLogger(f"{self.__class__.__name__} {self.instance}")
 
     def sendMessage(self, msgs, applyTemplates=False, suppressBodyPrint = False, templates=None, timeout=UE5_DEFAULT_TIMEOUT):
         url = self.ueurl
@@ -28,7 +30,7 @@ class UEClient:
 
         for msg in msgs:
             # TODO: Should send return codes back
-            print(f"UE ({self.instance})", tsformat(datetime.now()), ">", url + msg["request"])
+            self.logger.info(f"> {url} {msg['request']}")
             if "body" in msg:
                 headers = {'Content-Type': 'application/json'}
                 if applyTemplates:
@@ -58,12 +60,12 @@ class UEClient:
                 else:
                     r = requests.put(url + msg["request"], data=data, headers=headers, timeout=timeout)
             except requests.exceptions.Timeout:
-                print (f"*** UE5 TIMEOUT: {self.instance}")
+                self.logger.error (f"*** UE5 TIMEOUT")
                 return (-1, None)
             if r is not None:
-                print(f"UE ({self.instance})", tsformat(datetime.now()), "<", r.status_code, r.reason)
+                self.logger.info(f"< {r.status_code} {r.reason}")
             else:
-                print (f"UE ({self.instance})", "< error")
+                self.logger.warning (f"< error")
                 return(None)
             # jprint(json.loads(r.text))
             try:
@@ -74,7 +76,7 @@ class UEClient:
 
 
     def sendFromFile(self, msgfile, applyTemplates=True, suppressBodyPrint = False, templates=None, timeout=UE5_DEFAULT_TIMEOUT):
-        print(f"UE ({self.instance})","sendFromFile", msgfile)
+        self.logger.info(f"sendFromFile {msgfile}")
         with open(msgfile) as json_file:
             msg = json.load(json_file)
         return self.sendMessage(msg, applyTemplates=applyTemplates, suppressBodyPrint=suppressBodyPrint, templates=templates, timeout=timeout)
@@ -99,25 +101,25 @@ class UEClient:
 
     def checkConnection(self):
         if self.connectivityCheck==False:
-            print(f"---- Skipping connectivity check to UE for {self.instance}")
+            self.logger.warning(f"---- Skipping connectivity check to UE for {self.instance}")
             return
-        print(f"---- Testing connectivity to UE for {self.instance}")
+        self.logger.info(f"---- Testing connectivity to UE for {self.instance}")
         (sc, result) = self.sendFromFile(os.path.join(self.internalMessageRoot,"checkConnectivity.json"),applyTemplates=False, suppressBodyPrint = True, timeout=1)
         # TODO: Check for timeouts
         if sc is not None and sc==200:
-            print(f"UE ({self.instance}) connectivity OK")
+            self.logger.info(f"connectivity OK")
         else:
-            print(f"UE ({self.instance}) connectivity FAILED!", sc, result)
+            self.logger.error(f"connectivity FAILED! {sc} {result}")
             return sc
 
         #check that the right map is loaded
         (sc, result) = self.sendFromFile(os.path.join(self.internalMessageRoot, "checkWorld.json"), applyTemplates=True, suppressBodyPrint = True, timeout=1)
 
         if sc is not None and sc==200:
-            print(f"UE ({self.instance}) world check OK:", result)
+            self.logger.info(f"world check OK: {result}")
             return sc
         else:
-            print(f"UE ({self.instance}) world check failed!", sc, result)
+            self.logger.error(f"world check failed! {sc} {result}")
             return sc
 
 

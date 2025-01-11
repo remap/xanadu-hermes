@@ -23,18 +23,76 @@ from nicegui import app, ui
 import socketserver, socket
 
 
-from hermes.utils import jprint, tsformat, setParam, splitInstanceHostPort, splitHostPort
+from hermes.utils import jprint, jformat, tsformat, setParam, splitInstanceHostPort, splitHostPort
 from hermes.ue.UEClient import UEClient
 
 UE_JSON_PKG_PATH = True  # enable   a.b.c => a/b/c for sendFile
 UE_JSON_PKG_PATH_DEFAULT = "_default.json"  # use this if path resolves to director
 
+import logging
+import logging.config
+
+class ColorFormatter(logging.Formatter):
+    # Define ANSI escape codes for colors
+    COLORS = {
+        logging.INFO: "\033[97m",    # Default (gray)
+        logging.WARNING: "\033[93m",  # Yellow
+        logging.ERROR: "\033[31m",    # Red
+        logging.CRITICAL: "\033[1;31m",  # Bright Red
+        logging.DEBUG: "\033[37m",    # Grey
+    }
+    RESET = "\033[0m"
+
+    def format(self, record):
+        # Get the color for the log level
+        color = self.COLORS.get(record.levelno, self.RESET)
+        message = super().format(record)
+        # Apply color and reset formatting
+        return f"{color}{message}{self.RESET}"
+
 
 if __name__=="__main__":
+
+
+    logging.config.dictConfig({
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'default': {
+                'format': '[%(asctime)s] %(name)s: %(levelname)s: %(message)s',
+            },
+            'color': {
+                '()' : '__main__.ColorFormatter',
+                'format': '[%(asctime)s] %(name)s: %(levelname)s: %(message)s',
+            },
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'color',
+                'level': 'DEBUG',
+            },
+            'file': {
+                'class': 'logging.FileHandler',
+                'filename': 'app.log',
+                'formatter': 'default',
+                'level': 'INFO',
+            },
+        },
+        'root': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO'
+        },
+    })
+
+    logger = logging.getLogger("main")
+    logger.setLevel(logging.DEBUG)
+
 
     # Use argparse to handle command line arguments
     parser = argparse.ArgumentParser(description='Send a command to Unreal Engine via Remote Control API')
     parser.add_argument('-ueclient', type=str, help='unreal client host:port', default=None)
+    parser.add_argument('-ispie', action='store_true', help='ueclient is pie')
     parser.add_argument('-uemulticlient', type=str, help='load unreal clients from config file', default=None)
     parser.add_argument('-oscserver', type=str, help='OSC server host:port', default="0.0.0.0:8000")
     parser.add_argument('-skipuecheck', action='store_true', help='Skip checking for ue connectivity first')
@@ -67,21 +125,20 @@ if __name__=="__main__":
     if args.template is not None:
         tpl = Template.from_json_file(args.template)
         if instance is not None: tpl.add("instance",instance)
-        print(f"Template variables from {args.template}")
+        logger.info(f"Template variables from {args.template}")
+        logger.debug(jformat(tpl.mapping))
         instance = tpl["instance"]  # for legacy code
-        jprint(tpl.mapping)  # should not expose?
+#        logger.info(jformat(tpl.mapping)) # should not expose?
         prefix = tpl["prefix"] # also legacy
 
     else:
         tpl=None
-        print("No template file specified!")
+        logger.warning("No template file specified!")
 
-    print("Instance:", instance)
-
-    print("-------")
-    print("Firebase namespace (instance): /" + instance)
-    print("OSC Server:", oscServerHost, oscServerPort)
-    print("Message file root:", messageRoot)
+    logger.info(f"Instance: {instance}")
+    logger.info(f"Firebase namespace (instance): /{instance}")
+    logger.info(f"OSC Server: {oscServerHost}:{oscServerPort}")
+    logger.info(f"Message file root: {messageRoot}")
 
 
     ## UE5
@@ -94,7 +151,7 @@ if __name__=="__main__":
             newtpl["world"] = "/".join(parts)
         if "prefix" in newtpl:
             newtpl["prefix"] += newtpl["pie"]
-        print("Revised template for PIE", newtpl["world"], newtpl["prefix"])
+        logger.info(f"Revised template for PIE {newtpl['world']}, {newtpl['prefix']}")
 
     if args.uemulticlient is not None:
         path = Path(args.uemulticlient)
@@ -112,7 +169,7 @@ if __name__=="__main__":
                 if data[ueInstance]["check"]==False: check=False
 
             ueURL = "http://" + data[ueInstance]["host"] + ":" + str(data[ueInstance]["port"])
-            print(f"UE ({ueInstance}) client on {data[ueInstance]['host']}:{data[ueInstance]['port']}")
+            logger.info(f"UE ({ueInstance}) client on {data[ueInstance]['host']}:{data[ueInstance]['port']}")
             #print(f"UE ({ueInstance}) Path Prefix:", data[ueInstance]["prefix"])
 
             newtpl = tpl.copy() #fix extra copy?
@@ -127,14 +184,14 @@ if __name__=="__main__":
     if args.ueclient is not None:
         (ueInstance, ueClientHost, ueClientPort) = splitInstanceHostPort(args.ueclient)
         if ueInstance in ueclient:
-            print("** Warning: command line overriding multiclient")
+            logger.warning("Command line overriding multiclient")
         ueURL = "http://" + ueClientHost + ":" + str(ueClientPort)
 
-        print(f"UE ({ueInstance}) client on {ueClientHost}:{ueClientPort}")
+        logger.info(f"UE ({ueInstance}) client on {ueClientHost}:{ueClientPort}")
         #print(f"UE ({ueInstance}) Path Prefix:", prefix)
 
         newtpl = tpl.copy()
-        if "isPIE" in data[ueInstance] and data[ueInstance]["isPIE"] and "pie" in newtpl:
+        if args.ispie is not None:
             reviseTemplateForPIE(newtpl)
         #print(newtpl)
         ueclient[ueInstance] = UEClient( ueurl=ueURL, instance=ueInstance,prefix=prefix, template=newtpl,
@@ -168,19 +225,19 @@ if __name__=="__main__":
         path = f"{listenPath}{event.path}"
         e = {"type": event.event_type, "path": path, "data": event.data}
         if fbmsg==0:
-            print("Suppressing initial firebase message", e)
+            logger.info(f"Suppressing initial firebase message {e}")
         else:
-            print("firebase event", e)
+            logger.info(f"firebase event {e}")
 
             if path in fblisteners:
-                print(path,"-")
+                logger.debug(f"{path}-")
                 for k,v in fblisteners[path].items():
-                    print(k,v)
+                    logger.debug(f"{k},{v}")
                     # TODO: Validate
                     if v["action"]["type"].lower() == "echo":
-                        print("echo=>", v["action"]["data"].format(path=path,value=event.data))
+                        logger.debug("echo=>" + v["action"]["data"].format(path=path,value=event.data))
                     if v["action"]["type"].lower() == "unreal":
-                        print("unreal=>")
+                        logger.debug("unreal=>")
                         if "parsing" in v:
                             if v["parsing"]["type"] == "glom":
                                 #print("glom")
@@ -198,57 +255,58 @@ if __name__=="__main__":
     # really we should be streaming out commands as they come in.
     #
 
-    def fb_callback(result):
-        print("fb async return", result)
+    def fb_callback(result, source=None):
+        logger.info(f"Firebase async return from {source}: {result}")
 
     def osc_addr_template(s):
         return s.replace("{{instance}}", instance)
 
     import re
     def handleOSC_KL(addr, *args):
-        print("\n-KL--", datetime.today().strftime('%y-%m-%d %H:%M:%S'))
         addr = osc_addr_template(addr)
-        print("  ", addr)
-        print("    k:", args[0])
+
+
         if len(args) > 1:
             # Schedmessage templating
             if (args[0]=="schedmessage" and args[1].startswith("{{")):
                 now = datetime.now()
                 args = list(args)
-                print("    v:", args[1:])
+                #print("    v:", args[1:])
                 pattern = r"\{\{([0-9.]+)\}\}"
                 n = float(re.search(pattern, args[1]).group(1))
                 future_time = now + timedelta(milliseconds=n)
                 args[1] = future_time.strftime('%H:%M:%S.%f')[:-3]
-            print("    v:", args[1:])
+            logger.info(f"OSC KL {addr} k: {args[0]} v: {args[1:]}")
+        else:
+            logger.info(f"OSC KL {addr} k: {args[0]}")
+        #print("    v:", args[1:])
 
         result = []
         if (addr).endswith("/kvproperty"):
             if (len(args) % 2) == 1:
-                print("  setting trailing null value to empty string")
+                logger.warning("OSC KL setting trailing null value to empty string")
                 args = list(args).append("")
             for i in range(0, len(args), 2):
-                print("     ", args[i], args[i + 1])
+                logger.debug(f"     {args[i]} {args[i + 1]}")
                 firebase.put_async(addr, args[i], args[i + 1], params={'print': 'pretty'},
-                                   headers={'X_FANCY_HEADER': 'VERY FANCY'}, callback=fb_callback)
+                                   headers={'X_FANCY_HEADER': 'VERY FANCY'}, callback=lambda result: fb_callback(result, f"{args[1:]}"))
         else:  # if (addr).endswith("/method") or (addr).endswith("/childmethod") or (addr).endswith("/event"):
             result = firebase.post_async(addr, args, params={'print': 'pretty'},
-                                         headers={'X_FANCY_HEADER': 'VERY FANCY'}, callback=fb_callback)
+                                         headers={'X_FANCY_HEADER': 'VERY FANCY'}, callback=lambda result: fb_callback(result, f"{args[1:]}"))
     def handleOSC_FB(addr, *args):
-        print("\n-FB--", datetime.today().strftime('%y-%m-%d %H:%M:%S'))
         addr = osc_addr_template(addr)
-        print("  ", addr)
-        print("    k:", args[0])
         if len(args) > 1:
-            print("    v:", args[1:])
+            logger.info(f"OSC FB {addr} k: {args[0]} v: {args[1:]}")
+        else:
+            logger.info(f"OSC FB {addr} k: {args[0]}")
 
         result = []
         if (addr).endswith("/put"):
             if (len(args) % 2) == 0:
-                print("  setting trailing null value to empty string")
+                logger.warning("OSC FB setting trailing null value to empty string")
                 args = list(args).append("")
             for i in range(1, len(args), 2):
-                print("     ", args[i], args[i + 1])
+                logger.debug(f"     {args[i]} {args[i + 1]}")
                 firebase.put_async(args[0], args[i], args[i + 1], params={'print': 'pretty'},
                                    headers={'X_FANCY_HEADER': 'VERY FANCY'}, callback=fb_callback)
         elif (addr).endswith("/post"):
@@ -262,11 +320,9 @@ if __name__=="__main__":
     fblisteners = {}
     def handleOSC_FB_LISTEN(addr, *args):
         global fblisteners
-        print("\n-FB_LISTEN--", datetime.today().strftime('%y-%m-%d %H:%M:%S'))
-        print("  ", addr)
-        print("    k:", args[0])
+        logger.info(f"OSC FB_LISTEN {addr} k: {args[0]}")
         if (addr).endswith("/listen"):
-            print("listen", args[0], args[1])
+            logger.debug(f"listen {args[0]} {args[1]}")
             # TODO: Validate args
             msgfile = os.path.join(messageRoot, args[1])
             if not os.path.splitext(msgfile)[1]:
@@ -276,61 +332,58 @@ if __name__=="__main__":
             if not args[0] in fblisteners:
                 fblisteners[args[0]] = {}
             fblisteners[args[0]][msgfile] = msg
-            print("fblisteners",fblisteners)
+            logger.debug(f"fblisteners {fblisteners}")
         elif (addr).endswith("/removelisten"):
-            print("removelisten", args[0], args[1])
+            logger.debug(f"removelisten {args[0]} {args[1]}")
             msgfile = os.path.join(messageRoot, args[1])
             if not os.path.splitext(msgfile)[1]:
                 msgfile += '.json'
             fblisteners[args[0]].pop(msgfile, None)
             if len(fblisteners[args[0]])==0:
                 fblisteners.pop(args[0], None)
-            print("fblisteners",fblisteners)
+            logger.debug(f"fblisteners {fblisteners}")
 
 
     # Threading OSC Server
     def handleOSC_UE(addr, *args):
-        print("\n----- OSC <", datetime.today().strftime('%y-%m-%d %H:%M:%S'))
-        print("  ", addr)
         addrcomps = addr.split("/")
-        if len(args) > 0:
-            print("    k:", args[0])
-            if len(args) > 1:
-                print("    v:", args[1:])
+        if len(args) < 2:
+            logger.error(f"OSC UE < {addr} not enough args {args}")
+            return
+        logger.info(f"OSC UE < {addr}\n\tk: {args[0]}\n\tv: {args[1:]}")
 
+        # TODO: Check for /xanadu/ue5/call
+        templates = []
+        if len(args) > 2:
+            if (len(args[2:]) % 2 != 0): logger.warning("OSC UE odd number of kv pairs, one will be dropped from templating")
+            pairs = dict(zip(*[iter(args[2:])] * 2))
+            templates.append(Template(pairs))
+            logger.debug(f"OSC UE applying templates:{[str(t) for t in templates]}")
 
-                # TODO: Check for /xanadu/ue5/call
-                templates = []
-                if len(args) > 2:
-                    if (len(args[2:]) % 2 != 0): print("    Warning: odd number of kv pair, one will be dropped from templating")
-                    pairs = dict(zip(*[iter(args[2:])] * 2))
-                    templates.append(Template(pairs))
-                    print("    templates:", [str(t) for t in templates])
+        for ueInstance in ueclient:
+            # any always sends
 
-                for ueInstance in ueclient:
-                    # any always sends
+            if ueInstance=="any" or ueInstance == addrcomps[-2]:
+                uec = ueclient[ueInstance]
+                if (args[0] == "sendFromFile"):
+                    msgfile = os.path.join(messageRoot, args[1])
+                    if UE_JSON_PKG_PATH:
+                        msgfile = msgfile.replace(".", os.sep)
+                        if os.path.isdir(msgfile) and UE_JSON_PKG_PATH:
+                             msgfile = os.path.join(msgfile, UE_JSON_PKG_PATH_DEFAULT)
+                    if not os.path.splitext(msgfile)[1]:
+                        msgfile += '.json'
+                    # TODO: Asynchronous queue
+                    (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates)
+                    jprint(result)
 
-                    if ueInstance=="any" or ueInstance == addrcomps[-2]:
-                        uec = ueclient[ueInstance]
-                        if (args[0] == "sendFromFile"):
-                            msgfile = os.path.join(messageRoot, args[1])
-                            if UE_JSON_PKG_PATH:
-                                msgfile = msgfile.replace(".", os.sep)
-                                if os.path.isdir(msgfile) and UE_JSON_PKG_PATH:
-                                     msgfile = os.path.join(msgfile, UE_JSON_PKG_PATH_DEFAULT)
-                            if not os.path.splitext(msgfile)[1]:
-                                msgfile += '.json'
-                            # TODO: Asynchronous queue
-                            (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates)
-                            jprint(result)
-
-                        # if (args[0] == "sendFromFileWithReplacement"):
-                        #     msgfile = os.path.join(messageRoot, args[1])
-                        #     if not os.path.splitext(msgfile)[1]:
-                        #         msgfile += '.json'
-                        #     # TODO: Asynchronous queue, maybe use /remote/batch ?
-                        #     (rc,result) = uec.sendFromFileWithReplacement(msgfile, args)
-                        #     jprint(result)
+                # if (args[0] == "sendFromFileWithReplacement"):
+                #     msgfile = os.path.join(messageRoot, args[1])
+                #     if not os.path.splitext(msgfile)[1]:
+                #         msgfile += '.json'
+                #     # TODO: Asynchronous queue, maybe use /remote/batch ?
+                #     (rc,result) = uec.sendFromFileWithReplacement(msgfile, args)
+                #     jprint(result)
 
 
     ## Experimental TCP support tested with QLab 5
@@ -347,7 +400,7 @@ if __name__=="__main__":
                 msg = OscMessage(d)  # strip intro byte?
                 dispatcher.call_handlers_for_packet(d, self.client_address)
             except Exception as e:
-                print(str(e))
+                logger.error(str(e))
 
         def handle(self):
             data = b''
@@ -374,7 +427,7 @@ if __name__=="__main__":
             for msg in data.split(b'\xc0'):
                 self.process(msg)
 
-            print("\nfinished tcp {}:".format(self.client_address[0]), log)
+            logger.debug(f"finished tcp {self.client_address[0]}:\n{log}")
 
     if not args.skipuecheck:
         for ueInstance in ueclient:
@@ -440,9 +493,7 @@ if __name__=="__main__":
         access_token = credentials.token
         expiration_time = credentials.expiry.astimezone()
         # Print the token and expiration time in local timezone
-        print(f"Refresh FB Access Token:")
-        print(f"\tToken: {access_token[0:25]}...")
-        print(f"\tExpiry: {expiration_time}")
+        logger.warning(f"Refresh FB Access Token: {access_token[0:25]}... Expiry: {expiration_time}")
         firebase.setAccessToken(access_token)
         # Schedule the next refresh in 1 hour
         threading.Timer(3600, refresh_fb_token, args=[firebase, uid]).start()
@@ -452,19 +503,19 @@ if __name__=="__main__":
     # firebase listener
     # Run the listener in a separate thread
     listener_thread = threading.Thread(target=lambda: ref.listen(firebaseEventListener))
-    print("Listening for firebase events")
+    logger.info("Listening for firebase events")
     listener_thread.daemon = True
     listener_thread.start()
 
     #TCP OSC Server
     tcpserver = ThreadedTCPServer((oscServerHost, oscServerPort), ThreadedTCPRequestHandler)
-    print("(Experimental) Awaiting tcp connections on {}".format(tcpserver.server_address))
+    logger.info(f"(Experimental) Awaiting tcp connections on {tcpserver.server_address}")
     tcpserver_thread = threading.Thread(target=lambda: tcpserver.serve_forever())
     tcpserver_thread.start()
 
     udpserver = osc_server.ThreadingOSCUDPServer(
         (oscServerHost,oscServerPort), dispatcher)
-    print("Awaiting OSC via udp on {}".format(udpserver.server_address))
+    logger.info(f"Awaiting OSC via udp on {udpserver.server_address}")
 
     if args.gui:
         thread = threading.Thread(target=udpserver.serve_forever)
