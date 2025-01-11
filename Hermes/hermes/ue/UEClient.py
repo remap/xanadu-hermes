@@ -6,13 +6,14 @@ import os
 from datetime import datetime, timedelta
 from hermes.utils import tsformat, jformat
 import logging
+from hermes.template import Template
 
 UE5_DEFAULT_TIMEOUT = 1   # TODO: Arg / slower?
 
 
 class UEClient:
 
-    def __init__(self, ueurl, instance=None, prefix=None, template=None, internalMessageRoot=None, connectivityCheck=False, name=""):
+    def __init__(self, ueurl, instance=None, prefix=None, template=None, internalMessageRoot=None, connectivityCheck=False, mapNames=False, isPIE=False, name=""):
         self.ueurl = ueurl
         self.instance = instance  # Firebase namespace
         self.prefix = prefix # legacy prefix templater
@@ -20,7 +21,9 @@ class UEClient:
         self.actorTemplate = None
         self.internalMessageRoot = internalMessageRoot
         self.connectivityCheck = connectivityCheck
+        self.mapNames = mapNames
         self.name = name
+        self.isPIE = isPIE
         self.logger = logging.getLogger(f"{self.__class__.__name__} {self.instance}")
         self.logger.setLevel(logging.DEBUG)
 
@@ -127,8 +130,8 @@ class UEClient:
     #     # print(msg)
     #     return self.sendMessage(msg, template=template, suppressBodyPrint=suppressBodyPrint)
 
-    def checkConnection(self):
-        if self.connectivityCheck==False:
+    def checkConnection(self, force=False):
+        if self.connectivityCheck==False and not force:
             self.logger.warning(f"---- Skipping connectivity check to UE for {self.instance}")
             return
         self.logger.info(f"---- Testing connectivity to UE for {self.instance}")
@@ -150,5 +153,26 @@ class UEClient:
             self.logger.error(f"world check failed! {sc} {result}")
             return sc
 
+    def getNameMap(self, dump=False, force=False):
+        if self.mapNames==False and not force:
+            self.logger.warning(f"---- Skipping name map load {self.instance}")
+            return
+        self.logger.info(f"----  Name map load to UE for {self.instance}")
+        (rc, result) = self.sendFromFile(os.path.join(self.internalMessageRoot, "dumpActorNameMap.json"),
+                                        suppressBodyPrint=True, applyTemplates=True)
+        if result is not None:
+            # try:
+                map = json.loads(result[0]["ReturnValue"])#
 
+                if self.isPIE and "prefix" in self.template and "pie" in self.template:
+                    for k in map:
+                        map[k] = map[k].replace(self.template["_prefix"], self.template["_prefix"]+self.template["pie"])
+
+                if dump: self.logger.debug(jformat(map))
+                self.logger.info(f"Loaded {len(map)} name maps.")
+                self.setActorTemplate(Template(map))
+            # except:  # TODO: Fix exception detail
+            #     self.logger.error("Exception in loading map")
+
+        return (rc,result)
         #jprint(result)

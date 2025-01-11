@@ -47,6 +47,7 @@ if __name__=="__main__":
     parser.add_argument('-uemulticlient', type=str, help='load unreal clients from config file', default=None)
     parser.add_argument('-oscserver', type=str, help='OSC server host:port', default="0.0.0.0:8000")
     parser.add_argument('-skipuecheck', action='store_true', help='Skip checking for ue connectivity first')
+    parser.add_argument('-skipuenamemap', action='store_true', help='Skip Mapping names')
     parser.add_argument('-instance', required=False, type=str, help='instance name, will override template value')
     parser.add_argument('-template', required=False, type=str, help='template file')
     parser.add_argument('-messagedir', required=False, type=str, help='message folder', default="messages")
@@ -103,19 +104,24 @@ if __name__=="__main__":
             check=True
             if "check" in data[ueInstance]:
                 if data[ueInstance]["check"]==False: check=False
+            mapNames=True
+            if "mapNames" in data[ueInstance]:
+                if data[ueInstance]["mapNames"]==False: mapNames=False
 
             ueURL = "http://" + data[ueInstance]["host"] + ":" + str(data[ueInstance]["port"])
             logger.info(f"UE ({ueInstance}) client on {data[ueInstance]['host']}:{data[ueInstance]['port']}")
             #print(f"UE ({ueInstance}) Path Prefix:", data[ueInstance]["prefix"])
 
             newtpl = tpl.copy() #fix extra copy?
+            ispie=False
             if "isPIE" in data[ueInstance] and data[ueInstance]["isPIE"] and "pie" in newtpl:
+                ispie=True
                 reviseTemplateForPIE(newtpl)
                 logger.info(f"Revised template for PIE {newtpl['world']}, {newtpl['prefix']}")
                 logger.debug(jformat(newtpl.mapping))
             #print(newtpl)
             ueclient[ueInstance] = UEClient(ueurl=ueURL, instance=ueInstance, prefix=prefix, template=newtpl,
-                                            internalMessageRoot=internalMessageRoot, connectivityCheck=check)
+                                            internalMessageRoot=internalMessageRoot, connectivityCheck=check, isPIE=ispie, mapNames=mapNames)
 
     # use instance "any" to send any instance to an output
     # Single instance from command line (legacy)
@@ -129,13 +135,15 @@ if __name__=="__main__":
         #print(f"UE ({ueInstance}) Path Prefix:", prefix)
 
         newtpl = tpl.copy()
+        ispie=False
         if args.ispie is not None:
+            ispie=True
             reviseTemplateForPIE(newtpl)
             logger.info(f"Revised template for PIE {newtpl['world']}, {newtpl['prefix']}")
             logger.debug(jformat(newtpl.mapping))
         #print(newtpl)
         ueclient[ueInstance] = UEClient( ueurl=ueURL, instance=ueInstance,prefix=prefix, template=newtpl,
-                                         internalMessageRoot=internalMessageRoot, connectivityCheck=True)
+                                         internalMessageRoot=internalMessageRoot, connectivityCheck=True, isPIE=ispie, mapNames=True)
 
 
 
@@ -305,9 +313,10 @@ if __name__=="__main__":
             logger.error(f"No available instance for namespace {addr}")
             return
 
+        dumpmap = False
         if verb=="mapnames":
-            logger.info(f"OSC UE < mapnames")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
-
+            logger.info(f"OSC UE < mapnames {args}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
+            if "dump" in args: dumpmap = True
         elif verb=="call":
             logger.info(f"OSC UE < call {args[0]}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
         else:
@@ -337,16 +346,18 @@ if __name__=="__main__":
                     # TODO: Asynchronous queue
                     (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates)
                 elif verb=="mapnames":
-                    (rc, result) = uec.sendFromFile(os.path.join(internalMessageRoot,"dumpActorNameMap.json"), suppressBodyPrint=True, applyTemplates=True,
-                                                    templates=templates)
-                    if result is not None:
-                        try:
-                            map = json.loads(result[0]["ReturnValue"])
-                            logger.debug(jformat(map))
-                            uec.setActorTemplate(Template(map))
-                        except: # TODO: Fix exception detail
-                            logger.error("Exception in loading map")
-                        # log in uec
+                    uec.getNameMap(dump=dumpmap, force=True)
+                    # (rc, result) = uec.sendFromFile(os.path.join(internalMessageRoot,"dumpActorNameMap.json"), suppressBodyPrint=True, applyTemplates=True,
+                    #                                 templates=templates)
+                    # if result is not None:
+                    #     try:
+                    #         map = json.loads(result[0]["ReturnValue"])
+                    #         if dumpmap: logger.debug(jformat(map))
+                    #         logger.info(f"Loaded {len(map)} name maps.")
+                    #         uec.setActorTemplate(Template(map))
+                    #     except: # TODO: Fix exception detail
+                    #         logger.error("Exception in loading map")
+                    #     # log in uec
                         #logger.info(jformat(result))
 
                     # if (args[0] == "sendFromFileWithReplacement"):
@@ -358,10 +369,11 @@ if __name__=="__main__":
                     #     jprint(result)
 
 
-
-    if not args.skipuecheck:
-        for ueInstance in ueclient:
+    for ueInstance in ueclient:
+        if not args.skipuecheck:
             ueclient[ueInstance].checkConnection()
+        if not args.skipuenamemap:
+            ueclient[ueInstance].getNameMap()
 
     if args.runosc is not None:
         oscargs = args.runosc.split(" ")

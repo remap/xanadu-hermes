@@ -5,6 +5,7 @@
     "host": "192.168.1.85",
     "port": 30010,
     "prefix": "[unused]",
+    "mapNames": false,
     "check": false
   },
   "ed" : {
@@ -12,6 +13,7 @@
     "host": "192.168.1.85",
     "port": 30010,
     "prefix": "[unused]",
+    "mapNames": true,
     "check": true
   },
   "pie" : {
@@ -20,20 +22,23 @@
     "port": 30010,
     "prefix": "[unused]",
     "isPIE": true,
-    "check": true
+    "mapNames": true,
+    "check": false
   },
   "game" : {
     "note": "Standalone game, launched frome editor or separantely",
     "host": "192.168.1.85",
     "port": 30110,
     "prefix": "[unused]",
-    "check": true
+    "mapNames": true,
+    "check": false
   },
   "ndc" : {
     "note": "nDisplay display controller",
     "host": "192.168.1.85",
     "port": 30210,
     "prefix": "[unused]",
+    "mapNames": true,
     "check": true
   }
 }
