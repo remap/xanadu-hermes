@@ -64,7 +64,7 @@ class UEClient:
         return replace_value(source_dict)
 
 
-    def sendMessage(self, msgs, applyTemplates=False, suppressBodyPrint = False, templates=None, timeout=UE5_DEFAULT_TIMEOUT):
+    def sendMessage(self, msgs, applyTemplates=False, suppressBodyPrint = False, templates=None, timeout=UE5_DEFAULT_TIMEOUT, filepath=None):
         url = self.ueurl
         result = []
         if not isinstance(msgs, list):
@@ -81,6 +81,7 @@ class UEClient:
 
                 hasExternalParams = "externalParams" in msg
 
+
                 if applyTemplates:
 
                     # TODO Optimize - limit the number of message searches?
@@ -88,25 +89,47 @@ class UEClient:
                     if "objectPath" in msg["body"]: msg["body"]["objectPath"] = msg["body"]["objectPath"].replace(
                         "{{prefix}}", self.prefix)
 
+                    ## ARGUMENTS IN OSC CALL
+                    ##
                     # First, apply dynamic variables, which may refer to class variables.
                     if templates is not None:
                         for template in templates:
                             msg = template.replace_in_dict(msg)
 
+                    ## TEMPLATE FILE
+                    ##
                     # Then, apply the template file, which may be referred to from those variables
                     msg = self.template.replace_in_dict(msg)
+
+                    ## EXTERNAL PARAMETERS JSON / FILE
+                    ##
+                    # Do here to allow file to be set via template
+                    if "externalParamFile" in msg:
+                        # Maybe do in send from File???   #
+                        filename = os.path.join(filepath, msg["externalParamFile"])
+                        self.logger.info(f"Loading external parameters {filename}")
+                        with open(filename) as json_file:
+                            externalParams = json.load(json_file)
+                        # self.logger.debug(jformat(externalParams))
+                        msg["externalParams"] = externalParams if "externalParams" not in msg else externalParams | msg[
+                            "externalParams"]
+
+                        hasExternalParams = True
 
                     # Apply the external parameters, if available
                     if hasExternalParams:
                         msg["body"] = self.replace_placeholders(msg["body"], msg["externalParams"])
 
-
+                    ## REAPPLY TEMPLATE FILE
+                    ##
                     # TODO: Do we need to do it again?
                     # Then, reapply dynamic vars, in case there are pointers in other direction
                     if templates is not None:
                         for template in templates:
                             msg = template.replace_in_dict(msg)
 
+                    ## ACTOR NAME MAPPING (last) 
+                    ##
                     # Finally, apply actor name mapping:
                     if self.actorTemplate is not None:
                         msg = self.actorTemplate.replace_in_dict(msg)
@@ -158,7 +181,10 @@ class UEClient:
 
         if params is not None:  #call_generic support
             msg["body"]["parameters"]=params
-        return self.sendMessage(msg, applyTemplates=applyTemplates, suppressBodyPrint=suppressBodyPrint, templates=templates, timeout=timeout)
+        #TODO try/catch
+
+
+        return self.sendMessage(msg, applyTemplates=applyTemplates, suppressBodyPrint=suppressBodyPrint, templates=templates, timeout=timeout, filepath=os.path.dirname(msgfile))
 
     #
     # # TODO: Parse arbitrary key-value pairs and/or JSON
