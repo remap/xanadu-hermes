@@ -336,6 +336,7 @@ if __name__=="__main__":
                 templates.append(cg_template)
                 args = args[2:]
             elif verb == "call":
+                msgFileArg = args[0]
                 args = args[1:]
             # regular call parsing
             if (len(args) % 2 != 0): logger.warning("OSC UE odd number of kv pairs, one will be dropped from var parsing")
@@ -352,7 +353,7 @@ if __name__=="__main__":
             if ueInstance=="any" or ueInstance in targets or sendToAll:
                 uec = ueclient[ueInstance]
                 if verb=="call": #(args[0] == "sendFromFile"):
-                    msgfile = os.path.join(messageRoot, args[0])
+                    msgfile = os.path.join(messageRoot, msgFileArg)
                 if verb=="call_generic":
                     msgfile = os.path.join(internalMessageRoot, "callGeneric")
                 if verb=="call" or verb=="call_generic":

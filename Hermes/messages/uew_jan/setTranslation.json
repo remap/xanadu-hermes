@@ -1,0 +1,36 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "SetActorLocation",
+    "parameters": {
+      "NewLocation": {
+        "X": "{{_.Rotation.X}}",
+        "Y": "{{_.Rotation.Y}}",
+        "Z": "{{_.Rotation.Z}}"
+      },
+      "bSweep": true
+    },
+    "generateTransaction": true
+  },
+  "externaldescription": "Cut-and-paste from GetActorTransform",
+  "externalParams": {
+    "Rotation": {
+      "X": 0,
+      "Y": 0,
+      "Z": -0.7071067768845215,
+      "W": 0.7071067854885736
+    },
+    "Translation": {
+      "X": 0,
+      "Y": 0,
+      "Z": 0
+    },
+    "Scale3D": {
+      "X": 1,
+      "Y": 1,
+      "Z": 1
+    }
+  }
+}
