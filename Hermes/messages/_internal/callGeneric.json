@@ -4,6 +4,6 @@
   "body": {
     "objectPath": "{{_object}}",
     "functionName": "{{_function}}",
-    "generateTransaction": "{{_template}}"
+    "generateTransaction": "{{_transaction}}"
   }
 }

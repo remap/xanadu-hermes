@@ -128,7 +128,7 @@ class UEClient:
                         for template in templates:
                             msg = template.replace_in_dict(msg)
 
-                    ## ACTOR NAME MAPPING (last) 
+                    ## ACTOR NAME MAPPING (last)
                     ##
                     # Finally, apply actor name mapping:
                     if self.actorTemplate is not None:
