@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 from hermes.utils import tsformat, jformat
 import logging
 from hermes.template import Template
-
+import re
+from glom import glom
 UE5_DEFAULT_TIMEOUT = 1   # TODO: Arg / slower?
 
 
@@ -30,6 +31,39 @@ class UEClient:
     def setActorTemplate(self, t):
         self.actorTemplate=t
 
+    def replace_placeholders(self, source_dict, replacement_dict):
+        """
+        Recursively scans and replaces placeholders of the form {{_.path.to.value}} in a dictionary
+        with values from the replacement dictionary.
+
+        Supports whitespace variations and ensures paths start with '_.'
+        while leveraging glom syntax for path matching.
+
+        :param source_dict: The dictionary containing placeholders.
+        :param replacement_dict: The dictionary used for replacement values.
+        :return: A new dictionary with placeholders replaced.
+        """
+        p = re.compile(r"\{\{\s*_\.(.+?)\s*\}\}")
+
+        def replace_value(value):
+            if isinstance(value, str):
+                match = p.fullmatch(value)
+                if match:
+                    path = match.group(1).strip()
+                    try:
+                        return glom(replacement_dict, path)
+                    except Exception as e:
+                        raise ValueError(f"Error accessing path '{path}': {e}")
+                return value
+            elif isinstance(value, dict):
+                return {k: replace_value(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                return [replace_value(item) for item in value]
+            return value
+
+        return replace_value(source_dict)
+
+
     def sendMessage(self, msgs, applyTemplates=False, suppressBodyPrint = False, templates=None, timeout=UE5_DEFAULT_TIMEOUT):
         url = self.ueurl
         result = []
@@ -37,10 +71,16 @@ class UEClient:
             msgs = [msgs]
 
         for msg in msgs:
+
+
+
             # TODO: Should send return codes back
             self.logger.info(f"> {url} {msg['request']}")
             if "body" in msg:
                 headers = {'Content-Type': 'application/json'}
+
+                hasExternalParams = "externalParams" in msg
+
                 if applyTemplates:
 
                     # TODO Optimize - limit the number of message searches?
@@ -55,6 +95,11 @@ class UEClient:
 
                     # Then, apply the template file, which may be referred to from those variables
                     msg = self.template.replace_in_dict(msg)
+
+                    # Apply the external parameters, if available
+                    if hasExternalParams:
+                        msg["body"] = self.replace_placeholders(msg["body"], msg["externalParams"])
+
 
                     # TODO: Do we need to do it again?
                     # Then, reapply dynamic vars, in case there are pointers in other direction
@@ -110,6 +155,7 @@ class UEClient:
         self.logger.info(f"sendFromFile {msgfile}")
         with open(msgfile) as json_file:
             msg = json.load(json_file)
+
         if params is not None:  #call_generic support
             msg["body"]["parameters"]=params
         return self.sendMessage(msg, applyTemplates=applyTemplates, suppressBodyPrint=suppressBodyPrint, templates=templates, timeout=timeout)
