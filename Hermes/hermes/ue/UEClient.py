@@ -106,10 +106,12 @@ class UEClient:
         return (r.status_code, result)
 
 
-    def sendFromFile(self, msgfile, applyTemplates=True, suppressBodyPrint = False, templates=None, timeout=UE5_DEFAULT_TIMEOUT):
+    def sendFromFile(self, msgfile, applyTemplates=True, suppressBodyPrint = False, templates=None, timeout=UE5_DEFAULT_TIMEOUT, params=None):
         self.logger.info(f"sendFromFile {msgfile}")
         with open(msgfile) as json_file:
             msg = json.load(json_file)
+        if params is not None:  #call_generic support
+            msg["body"]["parameters"]=params
         return self.sendMessage(msg, applyTemplates=applyTemplates, suppressBodyPrint=suppressBodyPrint, templates=templates, timeout=timeout)
 
     #

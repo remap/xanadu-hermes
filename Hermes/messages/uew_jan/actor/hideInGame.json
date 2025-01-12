@@ -1,0 +1,12 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "SetActorHiddenInGame",
+    "parameters": {
+        "bNewHidden":  "{{hide}}"
+    },
+    "generateTransaction": true
+  }
+}

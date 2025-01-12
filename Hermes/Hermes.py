@@ -321,15 +321,29 @@ if __name__=="__main__":
             if "dump" in args: dumpmap = True
         elif verb=="call":
             logger.info(f"OSC UE < call {args[0]}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
+        elif verb=="call_generic":
+            logger.info(f"OSC UE < call_generic {args}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
         else:
             logger.error(f"OSC UE unknown verb {verb}")
             return
 
         templates = []
+
+        params = None
         if len(args) > 1:
-            if (len(args[1:]) % 2 != 0): logger.warning("OSC UE odd number of kv pairs, one will be dropped from var parsing")
-            pairs = dict(zip(*[iter(args[1:])] * 2))
+            if verb == "call_generic":
+                cg_template = Template({"_object": args[0], "_function": args[1], "_transaction": True})
+                templates.append(cg_template)
+                args = args[2:]
+            elif verb == "call":
+                args = args[1:]
+            # regular call parsing
+            if (len(args) % 2 != 0): logger.warning("OSC UE odd number of kv pairs, one will be dropped from var parsing")
+            pairs = dict(zip(*[iter(args)] * 2))
             templates.append(Template(pairs))
+            if verb=="call_generic":
+                params = pairs
+                logger.debug(f"Call generic {cg_template} {params}")
             logger.debug(f"OSC UE parsing dynamic vars:{[str(t) for t in templates]}")
 
         # Loop through the clients and do the work
@@ -339,6 +353,9 @@ if __name__=="__main__":
                 uec = ueclient[ueInstance]
                 if verb=="call": #(args[0] == "sendFromFile"):
                     msgfile = os.path.join(messageRoot, args[0])
+                if verb=="call_generic":
+                    msgfile = os.path.join(internalMessageRoot, "callGeneric")
+                if verb=="call" or verb=="call_generic":
                     if UE_JSON_PKG_PATH:
                         msgfile = msgfile.replace(".", os.sep)
                         if os.path.isdir(msgfile) and UE_JSON_PKG_PATH:
@@ -346,7 +363,7 @@ if __name__=="__main__":
                     if not os.path.splitext(msgfile)[1]:
                         msgfile += '.json'
                     # TODO: Asynchronous queue
-                    (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates)
+                    (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates, params=params)
                 elif verb=="mapnames":
                     uec.getNameMap(dump=dumpmap, force=True)
                     # (rc, result) = uec.sendFromFile(os.path.join(internalMessageRoot,"dumpActorNameMap.json"), suppressBodyPrint=True, applyTemplates=True,

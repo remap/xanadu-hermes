@@ -7,6 +7,6 @@
     "parameters": {
         "Snapshot":  "{{snapshot}}"
     },
-    "transaction": true
+    "generateTransaction": true
   }
 }

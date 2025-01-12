@@ -7,6 +7,6 @@
     "parameters": {
         "Snapshot":  "/Game/LevelSnapshots/ML_Xanadu_JB/2024-12-31/ML_Xanadu_JB_original.ML_Xanadu_JB_original"
     },
-    "transaction": true
+    "generateTransaction": true
   }
 }
