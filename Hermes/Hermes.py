@@ -73,7 +73,9 @@ if __name__=="__main__":
         logger.info(f"Template variables from {args.template}")
         logger.debug(jformat(tpl.mapping))
         instance = tpl["instance"]  # for legacy code
-#        logger.info(jformat(tpl.mapping)) # should not expose?
+        #instance = tpl["i"]  # for legacy code
+
+        #        logger.info(jformat(tpl.mapping)) # should not expose?
         prefix = tpl["prefix"] # also legacy
     else:
         tpl=None
