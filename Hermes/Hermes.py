@@ -364,7 +364,9 @@ if __name__=="__main__":
                     if not os.path.splitext(msgfile)[1]:
                         msgfile += '.json'
                     # TODO: Asynchronous queue
-                    (rc,result) = uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates, params=params)
+                    # Now, async so no real return here
+                    #(rc,result) = (
+                    uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates, params=params) #)
                 elif verb=="mapnames":
                     uec.getNameMap(dump=dumpmap, force=True)
                     # (rc, result) = uec.sendFromFile(os.path.join(internalMessageRoot,"dumpActorNameMap.json"), suppressBodyPrint=True, applyTemplates=True,
