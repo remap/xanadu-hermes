@@ -18,9 +18,9 @@
     },
     "file": {
       "class": "logging.FileHandler",
-      "filename": "app.log",
+      "filename": "Hermes.log",
       "formatter": "default",
-      "level": "INFO"
+      "level": "DEBUG"
     }
   },
   "root": {

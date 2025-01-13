@@ -205,7 +205,7 @@ class UEClient:
             msg = json.load(json_file)
 
         if "params" in kwargs and kwargs["params"] is not None:  #call_generic support
-            msg["body"]["parameters"]=params
+            msg["body"]["parameters"]=kwargs["params"]
         #TODO try/catch
 
         kwargs["filepath"]=os.path.dirname(msgfile)
