@@ -15,13 +15,14 @@ import concurrent.futures
 
 class UEClient:
 
-    def __init__(self, ueurl, instance=None, prefix=None, template=None, internalMessageRoot=None, connectivityCheck=False, mapNames=False, isPIE=False, name=""):
+    def __init__(self, ueurl, instance=None, prefix=None, template=None, internalMessageRoot=None, paramRoot=None, connectivityCheck=False, mapNames=False, isPIE=False, name=""):
         self.ueurl = ueurl
         self.instance = instance  # Firebase namespace
         self.prefix = prefix # legacy prefix templater
         self.template = template
         self.actorTemplate = None
         self.internalMessageRoot = internalMessageRoot
+        self.paramRoot = paramRoot
         self.connectivityCheck = connectivityCheck
         self.mapNames = mapNames
         self.name = name
@@ -130,13 +131,15 @@ class UEClient:
                         # Maybe do in send from File???   #
                         filename = os.path.join(filepath, msg["externalParamFile"])
                         self.logger.info(f"Loading external parameters {filename}")
-                        with open(filename) as json_file:
-                            externalParams = json.load(json_file)
+                        if os.path.isfile(filename):
+                            with open(filename) as json_file:
+                                externalParams = json.load(json_file)
+                            msg["externalParams"] = externalParams if "externalParams" not in msg else externalParams | msg["externalParams"]
+                        else:
+                            self.logger.warning(f"Could not load external parameter file {filename}")
                         # self.logger.debug(jformat(externalParams))
-                        msg["externalParams"] = externalParams if "externalParams" not in msg else externalParams | msg[
-                            "externalParams"]
 
-                        hasExternalParams = True
+                    if "externalParams" in msg: hasExternalParams = True
 
                     # Apply the external parameters, if available
                     if hasExternalParams:
@@ -208,7 +211,7 @@ class UEClient:
             msg["body"]["parameters"]=kwargs["params"]
         #TODO try/catch
 
-        kwargs["filepath"]=os.path.dirname(msgfile)
+        kwargs["filepath"]=self.paramRoot #os.path.dirname(msgfile)
         if "block" not in kwargs: kwargs["block"] = False # ToDo async by default?
         return self.sendMessage(msgs=msg, **kwargs) #applyTemplates=applyTemplates, suppressBodyPrint=suppressBodyPrint, templates=templates, timeout=timeout, filepath=os.path.dirname(msgfile), block = block)
 
@@ -272,9 +275,13 @@ class UEClient:
         if result is not None:
             # try:
                 map = json.loads(result[0]["ReturnValue"])#
-                if self.isPIE and "prefix" in self.template and "pie" in self.template:
+                if self.isPIE and "_pie" in self.template:
                     for k in map:
-                        map[k] = map[k].replace(self.template["_prefix"], self.template["_prefix"]+self.template["pie"])
+                        comps = map[k].split("/")
+                        comps[-1] = self.template["_pie"]+comps[-1]
+                        map[k] = "/".join(comps)
+                       #print(map[k])
+                        #map[k] = map[k].replace(self.template["_prefix"], self.template["_prefix"]+self.template["pie"])
 
                 if dump: self.logger.debug(jformat(map))
                 self.logger.info(f"Loaded {len(map)} name maps.")

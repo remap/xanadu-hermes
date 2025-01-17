@@ -116,7 +116,7 @@ class Template:
                 return json.loads(value)
             except:
                 pass
-            
+
         ## give up, hopefully string
         return value
 

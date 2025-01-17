@@ -13,13 +13,6 @@
     },
     "generateTransaction": true
   },
-  "externaldescription": "Cut-and-paste from GetActorTransform",
-  "externalParams": {
-    "Rotation":
-            {
-        "Pitch": 42,
-        "Yaw": 32.0,
-        "Roll": 0
-    }
-  }
+  "externaldescription": "Cut-and-paste from GetActorRotation",
+  "externalParamFile": "{{file}}"
 }

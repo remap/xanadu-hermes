@@ -1,0 +1,19 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "SetActorRotation",
+    "parameters": {
+      "NewRotation": {
+        "x": "{{_.Rotation.X}}",
+        "y": "{{_.Rotation.Y}}",
+        "z": "{{_.Rotation.Z}}",
+        "w": "{{_.Rotation.W}}"
+      }
+    },
+    "generateTransaction": true
+  },
+  "externaldescription": "Cut-and-paste from GetActorRotation",
+  "externalParamFile": "{{file}}"
+}

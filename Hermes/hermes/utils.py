@@ -23,13 +23,15 @@ def splitInstanceHostPort(s):
     instance,host,port = s.split(":")
     return (instance,host,int(port))
 
+## TODO: Check that works for sublevel - I think this is correct...
+##
 def reviseTemplateForPIE(newtpl):
     if "world" in newtpl:
         parts = newtpl["world"].rsplit("/", 1)
-        parts[-1] = newtpl["pie"] + parts[-1]
+        parts[-1] = newtpl["_pie"] + parts[-1]
         newtpl["world"] = "/".join(parts)
     if "prefix" in newtpl:
-        newtpl["prefix"] += newtpl["pie"]
+        newtpl["prefix"] += newtpl["_pie"]
 
 
 import logging

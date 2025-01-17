@@ -51,6 +51,7 @@ if __name__=="__main__":
     parser.add_argument('-instance', required=False, type=str, help='instance name, will override template value')
     parser.add_argument('-template', required=False, type=str, help='template file')
     parser.add_argument('-messagedir', required=False, type=str, help='message folder', default="messages")
+    parser.add_argument('-paramdir', required=False, type=str, help='message folder')
     parser.add_argument('-gui',action='store_true',help='experimental gui')
     parser.add_argument('-runosc', type=str)
     args = parser.parse_args()
@@ -63,6 +64,7 @@ if __name__=="__main__":
 
     ##  Message files
     messageRoot = args.messagedir
+    paramRoot = args.messagedir if args.paramdir is None else args.paramdir
     internalMessageRoot = os.path.join("messages", "_internal")
 
     ## variables
@@ -116,14 +118,14 @@ if __name__=="__main__":
 
             newtpl = tpl.copy() #fix extra copy?
             ispie=False
-            if "isPIE" in data[ueInstance] and data[ueInstance]["isPIE"] and "pie" in newtpl:
+            if "isPIE" in data[ueInstance] and data[ueInstance]["isPIE"] and "_pie" in newtpl:
                 ispie=True
                 reviseTemplateForPIE(newtpl)
                 logger.info(f"Revised template for PIE {newtpl['world']}, {newtpl['prefix']}")
                 logger.debug(jformat(newtpl.mapping))
             #print(newtpl)
             ueclient[ueInstance] = UEClient(ueurl=ueURL, instance=ueInstance, prefix=prefix, template=newtpl,
-                                            internalMessageRoot=internalMessageRoot, connectivityCheck=check, isPIE=ispie, mapNames=mapNames)
+                                            internalMessageRoot=internalMessageRoot, paramRoot=paramRoot, connectivityCheck=check, isPIE=ispie, mapNames=mapNames)
 
     # use instance "any" to send any instance to an output
     # Single instance from command line (legacy)
@@ -145,7 +147,7 @@ if __name__=="__main__":
             logger.debug(jformat(newtpl.mapping))
         #print(newtpl)
         ueclient[ueInstance] = UEClient( ueurl=ueURL, instance=ueInstance,prefix=prefix, template=newtpl,
-                                         internalMessageRoot=internalMessageRoot, connectivityCheck=True, isPIE=ispie, mapNames=True)
+                                         internalMessageRoot=internalMessageRoot, paramRoot=paramRoot, connectivityCheck=True, isPIE=ispie, mapNames=True)
 
 
 

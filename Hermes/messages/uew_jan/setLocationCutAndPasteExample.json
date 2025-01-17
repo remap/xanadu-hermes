@@ -6,14 +6,17 @@
     "functionName": "SetActorLocation",
     "parameters": {
       "NewLocation": {
-        "X": "{{_.Rotation.X}}",
-        "Y": "{{_.Rotation.Y}}",
-        "Z": "{{_.Rotation.Z}}"
-      },
-      "bSweep": true
+        "X": "{{_.X}}",
+        "Y": "{{_.Y}}",
+        "Z": "{{_.Z}}"
+      }
     },
     "generateTransaction": true
   },
-  "externaldescription": "Cut-and-paste from GetActorTransform",
-  "externalParamFile": "{{file}}"
+  "externaldescription": "Cut-and-paste from GetActorLocation",
+  "externalParams": {
+    "X": 2,
+    "Y": 1.0,
+    "Z": 0
+  }
 }
