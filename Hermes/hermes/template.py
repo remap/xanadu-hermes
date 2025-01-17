@@ -91,30 +91,33 @@ class Template:
         return self.mapping.pop(key, None) is not None
 
     def convert(self, value):
+        ## First int
+        try:
+            return int(value)
+        except ValueError:
+            pass
+
+        ## then float
+        try:
+            return float(value)
+        except ValueError:
+            pass
+
+        ## bool
         lower_str = value.lower()
         if lower_str == "true":
             return True
         elif lower_str == "false":
             return False
 
+        ## json
         if isinstance(value,str):
             try:
                 return json.loads(value)
             except:
                 pass
             
-        try:
-            return float(value)
-        except ValueError:
-            pass
-
-        try:
-            return int(value)
-        except ValueError:
-            pass
-
-
-
+        ## give up, hopefully string
         return value
 
     def replace_in_dict(self, data: Any) -> Any:
