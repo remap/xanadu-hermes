@@ -97,15 +97,23 @@ class Template:
         elif lower_str == "false":
             return False
 
+        if isinstance(value,str):
+            try:
+                return json.loads(value)
+            except:
+                pass
+            
+        try:
+            return float(value)
+        except ValueError:
+            pass
+
         try:
             return int(value)
         except ValueError:
             pass
 
-        try:
-            return float(value)
-        except ValueError:
-            pass
+
 
         return value
 
