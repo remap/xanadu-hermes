@@ -1,0 +1,24 @@
+{
+  "description": "Move the camera to a specified location and rotation in the editor or play-in-editor.",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{hermes_world}}",
+    "functionName": "MoveCameraToLocationWithRotation",
+    "parameters": {
+      "Location": {
+        "X": "{{px}}",
+        "Y": "{{py}}",
+        "Z": "{{pz}}"
+      },
+      "Rotation": {
+        "Pitch": "{{pitch}}",
+        "Yaw": "{{yaw}}",
+        "Roll": "{{roll}}"
+      },
+      "bCopyLocation": "{{copylocation}}",
+      "bCopyRotation": "{{copyrotation}}",
+      "bInEditor": "{{editor}}"
+    },
+    "generateTransaction": true
+  }
+}

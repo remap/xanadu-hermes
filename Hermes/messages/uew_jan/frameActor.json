@@ -1,0 +1,13 @@
+  {
+    "description": "Frame an actor in play-in-editor using its object path.",
+    "request": "/remote/object/call",
+    "body": {
+      "objectPath": "{{hermes_world}}",
+      "functionName": "FrameActor",
+      "parameters": {
+        "ActorPath": "{{actor}}",
+        "bInEditor" : "{{editor}}"
+      },
+      "generateTransaction": true
+    }
+  }
