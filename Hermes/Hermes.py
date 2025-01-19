@@ -201,16 +201,26 @@ if __name__=="__main__":
                         if len(missing) > 0:
                             logger.error(f"No available target: {missing}")
 
+
+
+                        if "parsing" in v:
+                            if v["parsing"]["type"] == "glom":
+                                #print("glom")
+                                spec=Assign(v["parsing"]["spec"], event.data)
+                                _ = glom(v, spec)
+                            if v["parsing"]["type"] == 'external_params':
+                                try:
+                                    if isinstance(event.data, str):
+                                        v["action"]["data"]["externalParams"] = json.loads(event.data)
+                                    else:
+                                        v["action"]["data"]["externalParams"] = event.data
+                                except:
+                                    logger.error(f"fblistener problem loading external params JSON {event.data}")
+                        logging.debug(jformat(v["action"]["data"]))
                         for ueInstance in ueclient:
                             # any always sends
                             if ueInstance == "any" or ueInstance in targets or sendToAll:
-
-                                if "parsing" in v:
-                                    if v["parsing"]["type"] == "glom":
-                                        #print("glom")
-                                        spec=Assign(v["parsing"]["spec"], event.data)
-                                        _ = glom(v, spec)
-                                ueclient[ueInstance].sendMessage(msgs=[v["action"]["data"]], template=True)  # TODO NEED TO ITERATE!
+                                    ueclient[ueInstance].sendMessage(msgs=[v["action"]["data"]], applyTemplates=True, template=True)  # TODO NEED TO ITERATE!
         fbmsg+= 1
 
     # Firebase
