@@ -180,7 +180,6 @@ if __name__=="__main__":
             logger.info(f"Suppressing initial firebase message {e}")
         else:
             logger.info(f"firebase event {e}")
-
             if path in fblisteners:
                 logger.debug(f"{path}-")
                 for k,v in fblisteners[path].items():
@@ -190,12 +189,28 @@ if __name__=="__main__":
                         logger.debug("echo=>" + v["action"]["data"].format(path=path,value=event.data))
                     if v["action"]["type"].lower() == "unreal":
                         logger.debug("unreal=>")
-                        if "parsing" in v:
-                            if v["parsing"]["type"] == "glom":
-                                #print("glom")
-                                spec=Assign(v["parsing"]["spec"], event.data)
-                                _ = glom(v, spec)
-                        ueclient.sendMessage(v["action"]["data"], template=True)  # TODO NEED TO ITERATE!
+                        target = "*" if "target" not in v["action"] else v["action"]["target"]  # default to all
+                        if not isinstance(target, list): target = [target]
+                        # TODO: Repeated from call - fix
+                        ueclientset = set(ueclient)
+                        targets = set(target)
+                        sendToAll = "*" in targets
+                        haveAny = "any" in ueclient
+                        haveAtLeastOne = targets & ueclientset
+                        missing = targets - ueclientset
+                        if len(missing) > 0:
+                            logger.error(f"No available target: {missing}")
+
+                        for ueInstance in ueclient:
+                            # any always sends
+                            if ueInstance == "any" or ueInstance in targets or sendToAll:
+
+                                if "parsing" in v:
+                                    if v["parsing"]["type"] == "glom":
+                                        #print("glom")
+                                        spec=Assign(v["parsing"]["spec"], event.data)
+                                        _ = glom(v, spec)
+                                ueclient[ueInstance].sendMessage(msgs=[v["action"]["data"]], template=True)  # TODO NEED TO ITERATE!
         fbmsg+= 1
 
     # Firebase
@@ -290,10 +305,13 @@ if __name__=="__main__":
             msgfile = os.path.join(messageRoot, args[1])
             if not os.path.splitext(msgfile)[1]:
                 msgfile += '.json'
-            fblisteners[args[0]].pop(msgfile, None)
-            if len(fblisteners[args[0]])==0:
-                fblisteners.pop(args[0], None)
-            logger.debug(f"fblisteners {fblisteners}")
+            if args[0] in fblisteners:
+                fblisteners[args[0]].pop(msgfile, None)
+                if len(fblisteners[args[0]])==0:
+                    fblisteners.pop(args[0], None)
+            else:
+                logger.warning(f"fblisteners nothing to remove, {args[0]}")
+            logger.debug(f"fblisteners: {fblisteners}")
 
 
     # Threading OSC Server
@@ -365,7 +383,7 @@ if __name__=="__main__":
                              msgfile = os.path.join(msgfile, UE_JSON_PKG_PATH_DEFAULT)
                     if not os.path.splitext(msgfile)[1]:
                         msgfile += '.json'
-                    # TODO: Asynchronous queue
+
                     # Now, async so no real return here
                     #(rc,result) = (
                     uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates, params=params) #)

@@ -74,7 +74,9 @@ class UEClient:
 
 
     def sendMessage(self, **kwargs):
-        if kwargs["block"]:
+        if "block" not in kwargs:
+            return self._sendMessage(**kwargs)
+        elif kwargs["block"]:
             del kwargs["block"]
             return self._sendMessage(**kwargs)
         else:
