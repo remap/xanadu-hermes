@@ -1,7 +1,7 @@
 xanadu-secret-*
 *.qlab5backup
-backups/Icon*
-backups/* 
+*backups/Icon*
+*backups/* 
 walker_ids.txt
 osceditor-persist.txt
 
