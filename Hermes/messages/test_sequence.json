@@ -1,0 +1,57 @@
+[
+  {
+    "description": "Load the sequence",
+    "_reference": "https://github.com/EpicGames/UnrealEngine/blob/40eea367040d50aadd9f030ed5909fc890c159c2/Engine/Plugins/VirtualProduction/RemoteControlWebInterface/WebApp/Client/src/components/Screens/Sequencer.tsx#L74",
+    "request": "/remote/object/call",
+    "body": {
+      "objectPath": "/Script/EditorScriptingUtilities.Default__EditorAssetLibrary",
+      "functionName": "LoadAsset",
+      "parameters": {
+        "AssetPath": "/Game/_Sets/Fall_24/LevelSequences/SEQ_MoveVenus.SEQ_MoveVenus"
+      },
+      "generateTransaction": true
+    }
+  },
+  {
+    "description": "Open the sequence",
+    "request": "/remote/object/call",
+    "body": {
+      "objectPath": "/Script/LevelSequenceEditor.Default__LevelSequenceEditorBlueprintLibrary",
+      "functionName": "OpenLevelSequence",
+      "parameters": {
+        "LevelSequence": "/Game/_Sets/Fall_24/LevelSequences/SEQ_MoveVenus.SEQ_MoveVenus"
+      },
+      "generateTransaction": true
+    }
+  },
+  {
+    "description": "Pause it",
+    "request": "/remote/object/call",
+    "body": {
+      "objectPath": "/Script/LevelSequenceEditor.Default__LevelSequenceEditorBlueprintLibrary",
+      "functionName": "Pause",
+      "generateTransaction": true
+    }
+  },
+  {
+    "description": "Set it to the start",
+    "request": "/remote/object/call",
+    "body": {
+      "objectPath": "/Script/LevelSequenceEditor.Default__LevelSequenceEditorBlueprintLibrary",
+      "functionName": "SetCurrentTime",
+      "parameters": {
+        "NewFrame": 0
+      },
+      "generateTransaction": true
+    }
+  },
+  {
+    "description": "Play the seqence",
+    "request": "/remote/object/call",
+    "body": {
+      "objectPath": "/Script/LevelSequenceEditor.Default__LevelSequenceEditorBlueprintLibrary",
+      "functionName": "Play",
+      "generateTransaction": true
+    }
+  }
+]

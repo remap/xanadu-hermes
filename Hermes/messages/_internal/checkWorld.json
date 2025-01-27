@@ -1,0 +1,8 @@
+{
+  "description": "Check for our world",
+  "method": "put",
+  "request": "/remote/object/describe",
+  "body": {
+    "objectPath": "{{world}}"
+}
+}

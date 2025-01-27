@@ -1,0 +1,19 @@
+{
+  "description": "",
+  "request": "/remote/object/property",
+  "body": {
+    "objectPath": "{{ndc}}.DisplayClusterConfigurationData_0",
+    "access": "WRITE_TRANSACTION_ACCESS",
+    "propertyName": "StageSettings",
+    "propertyValue": {
+        "StageSettings": {
+            "EntireClusterColorGrading": {
+                "ColorGradingSettings": {
+                    "AutoExposureBias" : "{{exposure}}",
+                    "bOverride_AutoExposureBias" : true
+                }
+            }
+        }
+    }
+  }
+}

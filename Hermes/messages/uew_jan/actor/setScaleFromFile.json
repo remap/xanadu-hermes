@@ -1,0 +1,19 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "SetActorScale3D",
+    "parameters": {
+      "NewScale3D": {
+        "x": "{{_.X}}",
+        "y": "{{_.Y}}",
+        "z": "{{_.Z}}"
+      },
+      "bSweep": true
+    },
+    "generateTransaction": true
+  },
+  "externaldescription": "Cut-and-paste from GetActorTransform",
+  "externalParamFile": "{{file}}"
+}

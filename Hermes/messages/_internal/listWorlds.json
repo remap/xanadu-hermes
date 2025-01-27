@@ -1,0 +1,18 @@
+{
+  "description": "List available level worlds",
+  "request": "/remote/search/assets",
+  "body": {
+      "Query": "",
+      "Filter": {
+        "ClassNames": [
+          "/Script/Engine.World"
+        ],
+        "PackagePaths": [
+          "/Game"
+        ],
+        "RecursiveClassesExclusionSet": [],
+        "RecursivePaths": true,
+        "RecursiveClasses": true
+      }
+  }
+}

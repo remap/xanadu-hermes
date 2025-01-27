@@ -1,0 +1,12 @@
+{
+  "description": "",
+  "request": "/remote/object/property",
+  "body": {
+    "objectPath": "{{object}}",
+    "access": "WRITE_TRANSACTION_ACCESS",
+    "propertyName": "bEnabled",
+    "propertyValue": {
+      "bEnabled": "{{enable}}"
+    }
+  }
+}

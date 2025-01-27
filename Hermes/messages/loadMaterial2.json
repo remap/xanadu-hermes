@@ -1,0 +1,9 @@
+{
+  "description": "Load material 2",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{prefix}}ML_Xanadu_v001.ML_Xanadu_v001:PersistentLevel.TestLoadImage_C_1",
+    "functionName": "Download",
+    "parameters" : {"url":  "https://www.dropbox.com/scl/fi/j3tx55m8jou0u0qps1rtx/The-City-x2-Character-Renderings.png?rlkey=jc00wfsjqqlnvyy3gn4ewk006&raw=1"}
+  }
+}

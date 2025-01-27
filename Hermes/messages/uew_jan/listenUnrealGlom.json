@@ -1,0 +1,18 @@
+{
+  "parsing": {"type": "glom", "spec": "action.data.body.parameters.url"},
+  "action": {
+    "type": "unreal",
+    "target": "game",
+    "data": {
+      "description": "Load material",
+      "request": "/remote/object/call",
+      "body": {
+        "objectPath": "{{object}}",
+        "functionName": "Download",
+        "parameters": {
+          "url": ""
+        }
+      }
+    }
+  }
+}

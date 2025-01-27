@@ -1,0 +1,22 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "SetActorLocation",
+    "parameters": {
+      "NewLocation": {
+        "X": "{{_.X}}",
+        "Y": "{{_.Y}}",
+        "Z": "{{_.Z}}"
+      }
+    },
+    "generateTransaction": true
+  },
+  "externaldescription": "Cut-and-paste from GetActorLocation",
+  "externalParams": {
+    "X": 2,
+    "Y": 1.0,
+    "Z": 0
+  }
+}

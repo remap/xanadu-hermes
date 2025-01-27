@@ -1,0 +1,18 @@
+{
+  "parsing": {"type": "external_params"},
+  "action": {
+    "type": "unreal",
+    "target": ["game","pie"],
+    "data": {
+      "description": "Load material",
+      "request": "/remote/object/call",
+      "body": {
+        "objectPath": "{{object}}",
+        "functionName": "Download",
+        "parameters": {
+          "url": "{{_.url}}"
+        }
+      }
+    }
+  }
+}

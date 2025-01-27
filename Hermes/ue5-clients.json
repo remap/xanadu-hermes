@@ -1,0 +1,77 @@
+{
+  "any": {
+    "load": false,
+    "note": "Should receive a copy of any message (unused)",
+    "host": "192.168.1.85",
+    "port": 30010,
+    "prefix": "[unused]",
+    "mapNames": false,
+    "check": false
+  },
+  "ed": {
+    "note": "Editor - including in multi-user sessions",
+    "host": "192.168.1.85",
+    "port": 30010,
+    "prefix": "[unused]",
+    "mapNames": true,
+    "check": true
+  },
+  "pie": {
+    "note": "Play in editor",
+    "host": "192.168.1.85",
+    "port": 30010,
+    "prefix": "[unused]",
+    "isPIE": true,
+    "mapNames": true,
+    "check": false
+  },
+  "game": {
+    "note": "Standalone game, launched frome editor or separantely",
+    "host": "192.168.1.85",
+    "port": 30110,
+    "prefix": "[unused]",
+    "mapNames": true,
+    "check": false
+  },
+  "ndc": {
+    "note": "nDisplay display controller",
+    "host": "192.168.1.85",
+    "port": 30210,
+    "prefix": "[unused]",
+    "mapNames": true,
+    "check": true
+  },
+  "t_ed": {
+    "note": "Shadow Editor - including in multi-user sessions",
+    "host": "100.101.130.78",
+    "port": 30010,
+    "prefix": "[unused]",
+    "mapNames": true,
+    "check": false
+  },
+  "t_game": {
+    "note": "Standalone game, launched frome editor or separantely",
+    "host": "100.101.130.78",
+    "port": 30110,
+    "prefix": "[unused]",
+    "mapNames": true,
+    "check": false
+  },
+  "t_pie": {
+    "note": "Standalone game, launched frome editor or separantely",
+    "host": "100.101.130.78",
+    "port": 30010,
+    "isPIE": true,
+    "prefix": "[unused]",
+    "mapNames": true,
+    "check": false
+  },
+  "t_ndc": {
+    "note": "Shadow ndDisplay - including in multi-user sessions",
+    "host": "100.101.130.78",
+    "port": 30210,
+    "prefix": "[unused]",
+    "mapNames": true,
+    "check": false
+  }
+}

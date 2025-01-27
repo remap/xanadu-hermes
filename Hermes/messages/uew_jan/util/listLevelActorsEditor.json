@@ -1,0 +1,9 @@
+{
+  "description": "Get all level actors in editorlistLevelActorsEditor.json",
+  "_reference": "https://forums.unrealengine.com/t/how-do-you-get-the-correct-remote-api-object-path-for-a-function/507987",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "/Script/UnrealEd.Default__EditorActorSubsystem",
+    "functionName": "GetAllLevelActors"
+  }
+}

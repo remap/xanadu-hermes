@@ -1,0 +1,7 @@
+{
+  "rules": {
+    ".read": "auth != null && (auth.provider==='anonymous' || auth.token.email==='firebase-adminsdk-9oc2p@xanadu-f5762.iam.gserviceaccount.com')",
+    ".write": "auth != null && (auth.provider==='anonymous' ||auth.token.email==='firebase-adminsdk-9oc2p@xanadu-f5762.iam.gserviceaccount.com')"
+  }
+}
+

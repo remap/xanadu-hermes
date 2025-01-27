@@ -1,0 +1,15 @@
+  {
+    "description": "Move an actor to the location and/or rotation of another actor using their object paths.",
+    "request": "/remote/object/call",
+    "body": {
+      "objectPath": "{{hermes_world}}",
+      "functionName": "MoveActorToOverlap",
+      "parameters": {
+        "SourcePath": "{{source}}",
+        "TargetPath": "{{target}}",
+        "bCopyLocation": true,
+        "bCopyRotation": true
+      },
+      "generateTransaction": true
+    }
+  }

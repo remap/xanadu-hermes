@@ -1,0 +1,19 @@
+{
+  "description": "List available level sequences",
+  "_reference": "https://github.com/EpicGames/UnrealEngine/blob/40eea367040d50aadd9f030ed5909fc890c159c2/Engine/Plugins/VirtualProduction/RemoteControlWebInterface/WebApp/Client/src/components/Screens/Sequencer.tsx#L35" ,
+  "request": "/remote/search/assets",
+  "body": {
+      "Query": "",
+      "Filter": {
+        "ClassNames": [
+          "/Script/LevelSequence.LevelSequence"
+        ],
+        "PackagePaths": [
+          "/Game"
+        ],
+        "RecursiveClassesExclusionSet": [],
+        "RecursivePaths": true,
+        "RecursiveClasses": true
+      }
+  }
+}

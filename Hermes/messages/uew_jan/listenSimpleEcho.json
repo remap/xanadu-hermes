@@ -1,0 +1,6 @@
+{
+  "action": {
+    "type": "echo",
+    "data": "{path} = '{value}'"
+  }
+}
