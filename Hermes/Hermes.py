@@ -6,7 +6,7 @@
 # python ./Hermes.py -ueclient "192.168.1.180:30010" -runosc "/xanadu/ue5/call sendFromFileWithReplacement test.json bNewVisibility true"
 
 # Note that our messages require generateTransaction:true to propagate in multiuser editor, I think.
-
+import shlex
 import requests    # pip install requests
 from pythonosc import dispatcher, osc_server   # pip install python-osc
 from pythonosc.osc_message import OscMessage
@@ -514,7 +514,8 @@ if __name__=="__main__":
                 if len(request.content) == 0 : return
                 msg = None
                 try:
-                    args = request.content.strip().split(" ")
+                    #args = request.content.strip().split(" ")
+                    args = shlex.split( request.content.strip() )
                     self.logger.info(f"Web interface received: {args}")
                     builder = osc_message_builder.OscMessageBuilder(address=args[0])
                     for arg in args[1:]:
