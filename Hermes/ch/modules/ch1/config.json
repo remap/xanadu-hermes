@@ -1,0 +1,9 @@
+{
+  "module": "ch1",
+  "description": "Chrysopoeia 1",
+  "candidates_to_generate": 2,
+  "pipeline": {
+    "name": "",
+    "start_phase": "preprocess"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "media_file": "[{'file': 'media.png', 'mimetype': 'image/png'}]",
+  "metadata_file": "metadata.json",
+  "input_bucket": "dev-xanadu-raw-input",
+  "output_bucket": "",
+  "instance": "xanadu",
+  "target_environment": "dev",
+  "user": "alice",
+  "group": "users",
+  "tags": "['tag1', 'tag2']",
+  "mimetype": "",
+  "timestamp": "2025-01-31T12:00:00"
+}

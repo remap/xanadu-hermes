@@ -1,0 +1,22 @@
+{
+  "instance": "xanadu",
+  "target_environment": "dev",
+  "metadata": {
+    "template_file": "metadata_template.json",
+    "parser": "jinja2",
+    "output_dir": "output"
+  },
+  "ue": {
+    "media_watch_dir": "input"
+  },
+  "s3": {
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": ""
+  },
+  "sqs": {
+    "notify_url": "https://sqs.us-west-2.amazonaws.com/976618892613/dev-xanadu"
+  },
+  "firebase": {
+    "notify_key": "/xanadu/ch/notify"
+  }
+}
