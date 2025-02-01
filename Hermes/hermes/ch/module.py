@@ -50,15 +50,16 @@ class UploadableCollection:
         pprint(self.files)
 
     def import_module(self):
+        self.metadata_file_for_notify = f'{self.s3_unique_prefix}-{self.module.dynamic.metadata_file}'
         self.files[ self.module.dynamic.metadata_file ] = dict(path=self.path / Path(self.module.dynamic.metadata_file),
-                                                               s3_unique_name=f'{self.s3_unique_prefix}-{self.module.dynamic.metadata_file}',
-                                                               mimetype="application/json", have=False, uploaded=False)
-
+                                                               s3_unique_name=self.metadata_file_for_notify,
+                                                               mimetype="application/json", have=False, uploaded=False, filetype="meta")
         for file in self.module.dynamic.media_files:
+            self.media_file_for_notify = f'{self.s3_unique_prefix}-{file["name"]}'
             self.files[ file["name"] ] = dict(path=self.path / Path(file["name"]),
                                               s3_unique_name=f'{self.s3_unique_prefix}-{file["name"]}',
                                               mimetype=file["mimetype"],
-                                              have=False, uploaded=False)
+                                              have=False, uploaded=False, filetype="media")
         self.s3_bucket = self.module.config.s3.input_bucket
 
     def generate_random_string(self):
@@ -79,18 +80,18 @@ class UploadableCollection:
                 return True
         return False
 
-    def upload_if_ready(self):
+    def upload_if_ready(self, notifier):
         if not self.ready_to_upload() or self.all_uploaded():
             return
         self.logger.info(f"Ready to upload {self.name}")
         for file_info in self.files.values():
             if not file_info["uploaded"]:
-                asyncio.create_task(self.upload_to_s3(file_info["path"], file_info["s3_unique_name"]))
+                asyncio.create_task(self.upload_to_s3(file_info["path"], file_info["s3_unique_name"], notifier))
                 file_info["uploaded"] = True
             else:
                 self.logger.debug(f'Skipping upload already called for {file_info["path"]}')
 
-    async def upload_to_s3(self, file_path: Path, key) -> None:
+    async def upload_to_s3(self, file_path: Path, key, notifier) -> None:
         file_path = Path(file_path)
         filename = file_path.name  # os.path.basename(file_path)
         self.logger.info(f"Uploading {filename} to bucket {self.s3_bucket}...")
@@ -99,18 +100,66 @@ class UploadableCollection:
             await asyncio.to_thread(self.s3.upload_file, file_path, self.s3_bucket, key)#filename)
             self.logger.info(f"Uploaded {filename} to {key} successfully.")
             #del pending_uploads[file_path]
+
+            ## TODO Here? Plus array
+            if self.all_uploaded():
+                notifier.notify(self.media_file_for_notify, self.metadata_file_for_notify)
+
             return True
         except Exception as err:
             self.logger.error(f"Error uploading {filename}: {err}")
             return False
 
+class SQSNotifier:
+
+    def __init__(self, sqs, queue_url, bucket,  pipeline, module, start_phase, logger=None):
+        self.logger = logger or logging.getLogger(__name__)
+        self.sqs = sqs
+        self.queue_url = queue_url
+        self.bucket = bucket
+        self.pipeline = pipeline
+        self.message_attributes = {
+            "module": {
+                "DataType": "String",
+                "StringValue": f"{module}"
+            },
+            "phase": {
+                "DataType": "String",
+                "StringValue": f"{start_phase}"
+            }
+        }
+
+    def notify(self, media_file, metadata_file):
+        self.message_body = {
+            "media_arn": f"arn:aws:s3:::{self.bucket}/{media_file}",
+            "metadata_arn": f"arn:aws:s3:::{self.bucket}/{metadata_file}",
+            "pipeline": f"{self.pipeline}"
+        }
+        self.logger.debug(self.queue_url)
+        self.logger.debug(self.message_body)
+        self.logger.debug(self.message_attributes)
+        response = self.sqs.send_message(
+            QueueUrl=self.queue_url,
+            MessageBody=json.dumps(self.message_body),
+            MessageAttributes=self.message_attributes
+        )
+        self.logger.debug(response)
+        if response is None:
+            self.logger.error("SQS Notifier response None")
+        elif response.get("ResponseMetadata", {}).get("HTTPStatusCode") == 200:
+            self.logger.info(f"SQS Notifier successful: {response}")
+        else:
+            self.logger.error(f'SQS Notifier got rc: {response.get("ResponseMetadata", {}).get("HTTPStatusCode")} - {response}')
+        return response
+
 class GenAIModuleRemote:
 
 
 
-    def __init__(self, s3, config_file: str, config_common_file: str = None, base_dir = '.', logger=None):
+    def __init__(self, s3, sqs, config_file: str, config_common_file: str = None, base_dir = '.', logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.s3 = s3
+        self.sqs = sqs
         self.base_dir = Path(base_dir)
         self.config_file = Path(config_file)
         self.config_dir = self.config_file.parent
@@ -136,6 +185,7 @@ class GenAIModuleRemote:
             raise
         self.config = to_namespace(self._config_dict)
         self.output_dir = self.base_dir / Path(self.config.metadata.output_dir)
+        self.notifier = SQSNotifier(self.sqs, self.config.sqs.notify_url, self.config.s3.input_bucket, self.config.pipeline.name, self.config.module, self.config.pipeline.start_phase, self.logger)
 
     def load_dynamic(self, dynamic_vars: dict):
         self.dynamic = to_namespace(dynamic_vars)
@@ -186,7 +236,7 @@ class GenAIModuleRemote:
                     self.logger.debug(f"Hit UploadableCollection {key}")
                     #if collection.ready_to_upload():
                         #self.logger.info(f"Ready to upload UploadableCollection {key}")
-                    collection.upload_if_ready()
+                    collection.upload_if_ready(self.notifier)
             return
         else:
             return
