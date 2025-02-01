@@ -45,7 +45,7 @@ if __name__=="__main__":
 
     if __name__ == '__main__':
 
-        def load_remote_configs(common_config: str, module_dir: str, module_config_filename: str) -> dict :
+        def load_remote_configs(s3, common_config: str, module_dir: str, module_config_filename: str) -> dict :
             #logger = logging.getLogger(__name__)
             logger.setLevel(logging.DEBUG)
             module_dir = Path(module_dir)
@@ -55,7 +55,7 @@ if __name__=="__main__":
                     config_file = subpath / module_config_filename
                     if config_file.exists():
                         try:
-                            remote = GenAIModuleRemote(config_file, config_common_file=common_config, base_dir=subpath, logger=logger)
+                            remote = GenAIModuleRemote(s3, config_file, config_common_file=common_config, base_dir=subpath, logger=logger)
                             remotes[remote.config.module] = remote
                             logger.info(f"Loaded config for module '{remote.config.module}' from {config_file}")
                         except Exception as e:
@@ -68,7 +68,7 @@ if __name__=="__main__":
 
 
         if __name__ == "__main__":
-            remotes = load_remote_configs(common_config="ch/modules/config-common.json", module_dir="ch/modules", module_config_filename="config.json")
+            remotes = load_remote_configs(s3=s3, common_config="ch/modules/config-common.json", module_dir="ch/modules", module_config_filename="config.json")
             for module_name, remote in remotes.items():
                 remote.load_dynamic( {
                 "media_files": [

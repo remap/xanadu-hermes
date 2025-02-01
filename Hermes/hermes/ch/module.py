@@ -15,7 +15,7 @@ from hermes.utils import jformat
 from pprint import pprint
 def to_namespace(d):
     return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
-
+import boto3
 
 ## config_common_file :  Common configuration file (optional), which can be overridden
 ## config file:  module-specific config
@@ -35,8 +35,9 @@ class State(StrEnum):
 import random, string
 class UploadableCollection:
 
-    def __init__(self, module: "GenAIModuleRemote", file_path : Path,  rel_path : Path,  logger=None):
+    def __init__(self, s3, module: "GenAIModuleRemote", file_path : Path,  rel_path : Path,  logger=None):
         self.logger = logger or logging.getLogger(__name__)
+        self.s3 = s3
         self.logger.setLevel(logging.DEBUG)
         self.module = module
         self.path = file_path
@@ -66,6 +67,10 @@ class UploadableCollection:
     def ready_to_upload(self):
         return all(x["have"] for x in self.files.values())
 
+    def all_uploaded(self):
+        return all(x["uploaded"] for x in self.files.values())
+
+
     def check_new_file(self, file_path):
         hit = False
         for file in self.files.values():
@@ -75,21 +80,24 @@ class UploadableCollection:
         return False
 
     def upload_if_ready(self):
-        if not self.ready_to_upload():
+        if not self.ready_to_upload() or self.all_uploaded():
             return
         self.logger.info(f"Ready to upload {self.name}")
         for file_info in self.files.values():
-            asyncio.create_task(self.upload_to_s3(file_info["s3_unique_name"]))
-            file_info["uploaded"] = True
+            if not file_info["uploaded"]:
+                asyncio.create_task(self.upload_to_s3(file_info["path"], file_info["s3_unique_name"]))
+                file_info["uploaded"] = True
+            else:
+                self.logger.debug(f'Skipping upload already called for {file_info["path"]}')
 
-    async def upload_to_s3(self, file_path: Path) -> None:
+    async def upload_to_s3(self, file_path: Path, key) -> None:
         file_path = Path(file_path)
         filename = file_path.name  # os.path.basename(file_path)
         self.logger.info(f"Uploading {filename} to bucket {self.s3_bucket}...")
-        return
+        # return
         try:
-            await asyncio.to_thread(s3.upload_file, file_path, self.s3_bucket, filename)
-            self.logger.info(f"Uploaded {filename} successfully.")
+            await asyncio.to_thread(self.s3.upload_file, file_path, self.s3_bucket, key)#filename)
+            self.logger.info(f"Uploaded {filename} to {key} successfully.")
             #del pending_uploads[file_path]
             return True
         except Exception as err:
@@ -100,8 +108,9 @@ class GenAIModuleRemote:
 
 
 
-    def __init__(self, config_file: str, config_common_file: str = None, base_dir = '.', logger=None):
+    def __init__(self, s3, config_file: str, config_common_file: str = None, base_dir = '.', logger=None):
         self.logger = logger or logging.getLogger(__name__)
+        self.s3 = s3
         self.base_dir = Path(base_dir)
         self.config_file = Path(config_file)
         self.config_dir = self.config_file.parent
@@ -163,10 +172,13 @@ class GenAIModuleRemote:
             raise
 
 
-    async def new_file_seen(self, rel_path: Path, file_path: Path) -> None:
+    async def manage_create(self, rel_path: Path, file_path: Path) -> None:
         if file_path.is_dir():
-            self.logger.info(f"Creating UploadableCollection '{rel_path}'")
-            self.uploadable_collections[rel_path] = UploadableCollection(self, file_path, rel_path, self.logger)
+            if rel_path in self.uploadable_collections:
+                self.logger.warn(f"Skipping creation of UploadableCollection '{rel_path}', already seen")
+            else:
+                self.logger.info(f"Creating UploadableCollection '{rel_path}'")
+                self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path, self.logger)
         elif file_path.is_file():
             self.logger.debug(f"Checking if UploadableCollections need new file {file_path}")
             for key, collection in self.uploadable_collections.items():
@@ -178,6 +190,13 @@ class GenAIModuleRemote:
             return
         else:
             return
+
+    async def manage_delete(self, rel_path: Path, file_path: Path) -> None:
+        self.logger.debug(f"manage_delete {rel_path} {file_path}")
+        if rel_path in self.uploadable_collections:
+            self.logger.warn(f"Removing UploadableCollection '{rel_path}'")
+            del self.uploadable_collections[rel_path]
+
 
         # self.state = State.UPLOADING
         # # for all media
@@ -210,8 +229,10 @@ class GenAIModuleRemote:
                         if file_path.is_dir() and not re.fullmatch(collection_matcher, str(rel_path.name)):
                             self.logger.warning(f"Skipping new path '{rel_path.name}' that does not match module's collection format '{self.config.ue.collection_matcher}'")
                             continue
-                        self.logger.info(f"Detected new file or directory: {rel_path}")
-                        asyncio.create_task(self.new_file_seen(rel_path, file_path))
+                        self.logger.debug(f"Detected new file or directory: {rel_path}")
+                        asyncio.create_task(self.manage_create(rel_path, file_path))
+                elif change == Change.deleted:
+                    asyncio.create_task(self.manage_delete(rel_path, file_path))
 
 if __name__ == "__main__":
     config_common = {
