@@ -7,7 +7,8 @@
     "output_dir": "output"
   },
   "ue": {
-    "media_watch_dir": "input"
+    "media_watch_dir": "input",
+    "collection_matcher" : "^[+-]?\\d+$"
   },
   "s3": {
     "input_bucket": "dev-xanadu-raw-input",

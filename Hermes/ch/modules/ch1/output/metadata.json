@@ -1,5 +1,5 @@
 {
-  "media_file": "[{'file': 'media.png', 'mimetype': 'image/png'}]",
+  "media_file": "[{'name': 'media.png', 'mimetype': 'image/png'}]",
   "metadata_file": "metadata.json",
   "input_bucket": "dev-xanadu-raw-input",
   "output_bucket": "",

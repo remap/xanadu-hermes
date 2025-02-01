@@ -2,11 +2,18 @@
 
 import logging
 import logging.config
-from hermes.utils import ColorFormatter
+from hermes.utils import ColorFormatter, jformat
 
 from pathlib import Path
 import json
 import time
+from pprint import pprint
+import asyncio
+
+import boto3
+from watchfiles import awatch, Change
+
+from hermes.ch.module import GenAIModuleRemote
 
 if __name__=="__main__":
 
@@ -20,16 +27,8 @@ if __name__=="__main__":
 
 
 
-    # !/usr/bin/env python3
-    import os
-    import asyncio
-
-    import boto3
-    from watchfiles import awatch, Change
-
-
     # Configuration
-    S3_BUCKET = 'your-s3-bucket'
+    S3_BUCKET = 'dev-xanadu-raw-input'
     WATCH_DIR = '../../chtesting'
     WATCH_PATH = Path(WATCH_DIR)
 
@@ -42,37 +41,61 @@ if __name__=="__main__":
     pending_uploads = {}
     DEBOUNCE_SEC = 1
 
-    async def upload_to_s3(file_path: str) -> None:
-        """Upload a file to the S3 bucket."""
-        filename = os.path.basename(file_path)
-        logger.info(f"Uploading {filename} to bucket {S3_BUCKET}...")
-        try:
-            await asyncio.to_thread(s3.upload_file, file_path, S3_BUCKET, filename)
-            logger.info(f"Uploaded {filename} successfully.")
-        except Exception as err:
-            logger.error(f"Error uploading {filename}: {err}")
-
-
-    async def watch_directory() -> None:
-        """Watch the directory for new files and upload them."""
-        async for changes in awatch(WATCH_PATH):
-            for change, file_path in changes:
-                rel_path = Path(file_path).relative_to(WATCH_PATH.resolve())
-                logger.debug(f"Change: {change.name} {rel_path}")
-                if change == Change.added:
-                    if rel_path in pending_uploads:
-                        t = time.time() - pending_uploads[rel_path]
-                        if t < DEBOUNCE_SEC:
-                            logger.debug(f"Debounce {t:0.3f} {rel_path}")
-                        else:
-                            logger.warning(f"Upload already in progress, re-upload not implemented.")
-                    else:
-                        logger.info(f"Detected new file: {rel_path}")
-                        pending_uploads[rel_path] = time.time()
-
-                    # Schedule the upload without awaiting (i.e. fire-and-forget)
-                    #asyncio.create_task(upload_to_s3(file_path))
 
 
     if __name__ == '__main__':
-        asyncio.run(watch_directory())
+
+        def load_remote_configs(common_config: str, module_dir: str, module_config_filename: str) -> dict :
+            #logger = logging.getLogger(__name__)
+            logger.setLevel(logging.DEBUG)
+            module_dir = Path(module_dir)
+            remotes = {}
+            for subpath in module_dir.iterdir():
+                if subpath.is_dir():
+                    config_file = subpath / module_config_filename
+                    if config_file.exists():
+                        try:
+                            remote = GenAIModuleRemote(config_file, config_common_file=common_config, base_dir=subpath, logger=logger)
+                            remotes[remote.config.module] = remote
+                            logger.info(f"Loaded config for module '{remote.config.module}' from {config_file}")
+                        except Exception as e:
+                            logger.error(f"Failed to load module config for module '{remote.config.module}': {e}")
+                    else:
+                        logger.warning(f"No config.json found in {subpath}")
+            return remotes
+
+
+
+
+        if __name__ == "__main__":
+            remotes = load_remote_configs(common_config="ch/modules/config-common.json", module_dir="ch/modules", module_config_filename="config.json")
+            for module_name, remote in remotes.items():
+                remote.load_dynamic( {
+                "media_files": [
+                    {
+                    "name" : "media.png",
+                    "mimetype" : "image/png"
+                    }
+                ],
+                "metadata_file": "metadata.json",
+                "user": "alice",
+                "group": "users",
+                "tags": ["tag1", "tag2"],
+                "timestamp": "2025-01-31T12:00:00"
+                })
+                print("---- CONFIG ----")
+                pprint(remote.config)
+                print("---- DYNAMIC ----")
+                pprint(remote.dynamic)
+                metadata_rendered = remote.render_template()
+                print("---- METADATA ----")
+                print (jformat(metadata_rendered))
+                print(remote.write_template())
+
+            logger.info("Running async watchers...")
+
+            async def watch():
+                tasks = [remote.watch_directory() for remote in remotes.values()]
+                await asyncio.gather(*tasks)
+
+            asyncio.run(watch())
