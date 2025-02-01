@@ -18,7 +18,7 @@
     },
     "file": {
       "class": "logging.FileHandler",
-      "filename": "log/Hermes.log",
+      "filename": "log/HermesCh.log",
       "formatter": "default",
       "level": "DEBUG"
     }
@@ -28,6 +28,6 @@
       "console",
       "file"
     ],
-    "level": "INFO"
+    "level": "ERROR"
   }
 }

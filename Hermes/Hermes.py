@@ -42,7 +42,7 @@ if __name__=="__main__":
     logging.config.dictConfig(logconfig)
     logger = logging.getLogger("main")
     logger.setLevel(logging.DEBUG)
-
+    
     # Use argparse to handle command line arguments
     parser = argparse.ArgumentParser(description='Send a command to Unreal Engine via Remote Control API')
     parser.add_argument('-ueclient', type=str, help='unreal client host:port', default=None)
