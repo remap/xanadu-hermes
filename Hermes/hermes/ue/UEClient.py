@@ -258,7 +258,7 @@ class UEClient:
                                          applyTemplates=True, suppressBodyPrint = True, timeout=1, block=True)
 
         if sc is not None and sc==200:
-            self.logger.info(f"world check OK: {result[:150]}...")
+            self.logger.info(f"world check OK: {str(result)[:150]}...")
             return sc
         else:
             self.logger.error(f"world check failed! {sc} {result}")

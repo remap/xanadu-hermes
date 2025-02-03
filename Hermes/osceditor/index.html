@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/selection/active-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/selection/active-line.min.js"></script>
 
     <style>
         body {
@@ -21,43 +21,45 @@
             height: 100vh;
         }
 
-.explanation {
-    padding: 16px;
-    font-size: 14px;
-    background-color: #333333;
-    border-bottom: 1px solid #444;
-    line-height: 1.8; /* Increase line spacing only for this section */
-}
+        .explanation {
+            padding: 16px;
+            font-size: 14px;
+            background-color: #333333;
+            border-bottom: 1px solid #444;
+            line-height: 1.8; /* Increase line spacing only for this section */
+        }
 
         button {
-        padding: 6px 12px; /* Reduced padding for a shorter appearance */
-        margin-right: 10px;
-        cursor: pointer;
-        border: 1px solid #555; /* Subtle border for contrast */
-        background-color: #444; /* Darker button background */
-        color: #fff; /* White text for contrast */
-        border-radius: 4px; /* Slightly rounded corners */
-        font-size: 14px; /* Keep the font size readable */
-        transition: background-color 0.1s, box-shadow 0.1s; /* Smooth transitions */
-    }
+            padding: 6px 12px; /* Reduced padding for a shorter appearance */
+            margin-right: 10px;
+            cursor: pointer;
+            border: 1px solid #555; /* Subtle border for contrast */
+            background-color: #444; /* Darker button background */
+            color: #fff; /* White text for contrast */
+            border-radius: 4px; /* Slightly rounded corners */
+            font-size: 14px; /* Keep the font size readable */
+            transition: background-color 0.1s, box-shadow 0.1s; /* Smooth transitions */
+        }
 
-    button:hover {
-        background-color: #555; /* Slightly lighter background on hover */
-        box-shadow: 0 0 5px #666; /* Glow effect for hover */
-    }
+        button:hover {
+            background-color: #555; /* Slightly lighter background on hover */
+            box-shadow: 0 0 5px #666; /* Glow effect for hover */
+        }
 
-    button:active {
-        background-color: #333; /* Darker background when pressed */
-        box-shadow: inset 0 0 3px #000; /* Inset shadow for pressed effect */
-    }
+        button:active {
+            background-color: #333; /* Darker background when pressed */
+            box-shadow: inset 0 0 3px #000; /* Inset shadow for pressed effect */
+        }
 
-    button:focus {
-        outline: none; /* Remove default focus outline */
-        box-shadow: 0 0 5px #888; /* Highlighted focus effect */
-    }
+        button:focus {
+            outline: none; /* Remove default focus outline */
+            box-shadow: 0 0 5px #888; /* Highlighted focus effect */
+        }
+
         #editor {
             flex-grow: 1;
         }
+
         .CodeMirror {
             height: 100%; /* Make the editor fill available space */
         }
@@ -79,16 +81,17 @@
     <div>
         <h1 style="font-size: 1.25rem; margin: 0;">Hermes OSC Sender</h1>
         <p style="margin: 0; font-size: 0.9rem; color: #aaa ">
-            Press <strong>Command-Enter</strong> on macOS or <strong>Ctrl-Enter</strong> on Windows/Linux to send the current line to
+            Press <strong>Command-Enter</strong> (macOS) or <strong>Ctrl-Enter / Ctrl-G</strong> on (Windows) to send
+            the current line to
             Hermes.
         </p>
     </div>
-    <div class="buttons" style="display: flex; flex-direction: column; align-items: flex-end; width: 100px;">
-        <button onclick="window.loadFile()" style="width: 100%; margin-bottom: 5px;">Load</button>
+    <div class="buttons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 200px;">
+        <button onclick="window.loadFile()" style="width: 100%;">Load</button>
         <button onclick="window.saveFile()" style="width: 100%;">Save</button>
-        <button onclick="processCurrentLine()" style="width: 100%;">Fire</button>
-
+        <button onclick="processCurrentLine()" style="width: 100%; grid-column: span 2;">Fire</button>
     </div>
+
 </div>
 <textarea id="editor">
 
@@ -109,14 +112,12 @@
             });
 
 
-
-
             const output = document.getElementById("output");
 
             // Add keybinding for Ctrl-Enter or Command-Enter
             editor.addKeyMap({
                 "Ctrl-Enter": processCurrentLine,
-                "Ctrl-G" : processCurrentLine, 
+                "Ctrl-G": processCurrentLine,
                 "Cmd-Enter": processCurrentLine, // macOS support
             });
 
@@ -124,19 +125,19 @@
                 try {
                     const response = await fetch("/load-file");
                     if (!response.ok) {
-                      output.textContent = `Load error`;
-                      return;
+                        output.textContent = `Load error`;
+                        return;
                     }  //throw new Error("Failed to load file.");
                     const data = await response.json();
                     editor.setValue(data.content); // Populate editor with file content
-                     output.textContent = `Load successful`;
+                    output.textContent = `Load successful`;
                 } catch (error) {
                     alert("Error loading file: " + error.message);
                 }
             }
 
             // Save file content to the backend
-           window.saveFile = async function ()  {
+            window.saveFile = async function () {
                 try {
                     const content = editor.getValue(); // Get content from the editor
                     const response = await fetch("/save-file", {
@@ -144,10 +145,10 @@
                         headers: {"Content-Type": "text/plain"},
                         body: content,
                     });
-                   // if (!response.ok) throw new Error("Failed to save file.");
+                    // if (!response.ok) throw new Error("Failed to save file.");
                     if (!response.ok) {
-                      output.textContent = `Save error`;
-                      return;
+                        output.textContent = `Save error`;
+                        return;
                     }
                     output.textContent = `Save successful`;
                 } catch (error) {
@@ -181,6 +182,7 @@
                     output.textContent = `Error: ${error.message}`;
                 }
             }
+
             window.processCurrentLine = processCurrentLine;
 
             await window.loadFile();
