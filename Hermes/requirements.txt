@@ -18,7 +18,8 @@ ini2toml==0.15
 ipython==8.12.3
 ipywidgets==8.1.5
 Jinja2==3.1.5
-jnius==1.1.0
+jnius==1.1.0; sys_platform=="darwin"
+pyjnius; sys_platform=="win32"
 js==1.0
 jsonmerge==1.9.2
 keyring==25.6.0
