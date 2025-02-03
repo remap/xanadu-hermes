@@ -42,7 +42,7 @@ if __name__=="__main__":
     logging.config.dictConfig(logconfig)
     logger = logging.getLogger("main")
     logger.setLevel(logging.DEBUG)
-    
+
     # Use argparse to handle command line arguments
     parser = argparse.ArgumentParser(description='Send a command to Unreal Engine via Remote Control API')
     parser.add_argument('-ueclient', type=str, help='unreal client host:port', default=None)
@@ -617,14 +617,21 @@ if __name__=="__main__":
                         data = b''
                     else:
                         for msg in msgs[:-1]: self.process(msg)
-                        data = msg + b'\xc0'  # more efficient way?
+                        data = msg + b'\xc0'
                 except socket.timeout:
                     # print("tcp socket timeout")
                     break
                     #       data = data.strip()
+                except Exception as e:
+                    logger.error(f"Error in TCP  {self.client_address[0]}", exc_info=True)
+                    break
 
             for msg in data.split(b'\xc0'):
-                self.process(msg)
+                try:
+                    self.process(msg)
+                except:
+                    logger.error(f"Error in message processing {self.client_address[0]}", exc_info=True)
+                    return
 
             logger.debug(f"finished tcp {self.client_address[0]}:\n{log}")
 

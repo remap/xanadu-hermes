@@ -1,18 +1,14 @@
 
-
 import logging
 import logging.config
 from hermes.utils import ColorFormatter, jformat
-
 from pathlib import Path
 import json
 import time
 from pprint import pprint
 import asyncio
-
 import boto3
 from watchfiles import awatch, Change
-
 from hermes.ch.module import GenAIModuleRemote
 
 if __name__=="__main__":
@@ -24,14 +20,10 @@ if __name__=="__main__":
     logging.config.dictConfig(logconfig)
     logger = logging.getLogger("main")
     logger.setLevel(logging.DEBUG)
-
-
-
     # Configuration
-    S3_BUCKET = 'dev-xanadu-raw-input'
-    WATCH_DIR = '../../chtesting'
+    S3_BUCKE
+    DIR = '../../chtesting'
     WATCH_PATH = Path(WATCH_DIR)
-
 
     logger.info(f"Hermes-Chrysopoeia Watcher {WATCH_PATH.resolve()}")
 
@@ -40,8 +32,6 @@ if __name__=="__main__":
     sqs = boto3.client('sqs')
     pending_uploads = {}
     DEBOUNCE_SEC = 1
-
-
 
     if __name__ == '__main__':
 
@@ -68,7 +58,19 @@ if __name__=="__main__":
 
 
         if __name__ == "__main__":
+
+
+            ## Config data is configured per module
+            ##
             remotes = load_remote_configs(s3=s3, sqs=sqs, common_config="ch/modules/config-common.json", module_dir="ch/modules", module_config_filename="config.json")
+
+            ## Dynamic data is created at run-time during the show
+            ## It is what is watched for.
+            ##
+            ## Probably we want to use user/group to match up with the directories...
+            # TODO: Variable for that
+            ##
+
             for module_name, remote in remotes.items():
                 remote.load_dynamic( {
                 "media_files": [

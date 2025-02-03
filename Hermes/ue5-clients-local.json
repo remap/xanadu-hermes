@@ -1,0 +1,24 @@
+{
+  "ed": {
+    "note": "Editor - including in multi-user sessions",
+    "host": "127.0.0.1",
+    "port": 30010,
+    "mapNames": true,
+    "check": true
+  },
+  "pie": {
+    "note": "Play in editor",
+    "host": "127.0.0.1",
+    "port": 30010,
+    "isPIE": true,
+    "mapNames": true,
+    "check": false
+  },
+  "game": {
+    "note": "Standalone game, launched frome editor or separantely",
+    "host": "127.0.0.1",
+    "port": 30110,
+    "mapNames": true,
+    "check": false
+  }
+}

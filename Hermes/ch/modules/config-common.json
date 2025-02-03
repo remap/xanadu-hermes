@@ -12,7 +12,7 @@
   },
   "s3": {
     "input_bucket": "dev-xanadu-raw-input",
-    "output_bucket": ""
+    "output_bucket": "dev-xanadu-postprocess"
   },
   "sqs": {
     "notify_url": "https://sqs.us-west-2.amazonaws.com/976618892613/dev-xanadu"
