@@ -1,6 +1,5 @@
 # API -
 # https://dev.epicgames.com/documentation/en-us/unreal-engine/remote-control-api-http-reference-for-unreal-engine
-
 #
 # Example command line use to simulate osc command
 # python ./Hermes.py -ueclient "192.168.1.180:30010" -runosc "/xanadu/ue5/call sendFromFileWithReplacement test.json bNewVisibility true"
