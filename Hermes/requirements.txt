@@ -32,7 +32,6 @@ Pillow==11.1.0
 pkg1==0.0.3
 protobuf==5.29.3
 pydantic==2.10.6
-pyodide==0.0.2
 pyOpenSSL==24.3.0
 pyOpenSSL==25.0.0
 pytest==8.3.4
