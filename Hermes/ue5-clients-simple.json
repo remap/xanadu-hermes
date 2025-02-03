@@ -1,14 +1,14 @@
 {
   "ed": {
     "note": "Editor - including in multi-user sessions",
-    "host": "192.168.1.85",
+    "host": "100.101.130.78",
     "port": 30010,
     "mapNames": true,
     "check": true
   },
   "pie": {
     "note": "Play in editor",
-    "host": "192.168.1.85",
+    "host": "100.101.130.78",
     "port": 30010,
     "isPIE": true,
     "mapNames": true,
@@ -16,7 +16,7 @@
   },
   "game": {
     "note": "Standalone game, launched frome editor or separantely",
-    "host": "192.168.1.85",
+    "host": "100.101.130.78",
     "port": 30110,
     "mapNames": true,
     "check": false
