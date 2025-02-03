@@ -90,6 +90,10 @@
         <button onclick="window.loadFile()" style="width: 100%;">Load</button>
         <button onclick="window.saveFile()" style="width: 100%;">Save</button>
         <button onclick="processCurrentLine()" style="width: 100%; grid-column: span 2;">Fire</button>
+        <div style="grid-column: span 2; display: flex; align-items: center;">
+            <input type="checkbox" id="advanceOnFireCheckbox" onchange="window.advanceOnFire = this.checked;">
+            <label for="advanceOnFireCheckbox" style="margin-left: 5px;">Advance on Fire</label>
+        </div>
     </div>
 
 </div>
@@ -100,6 +104,7 @@
 <script>
     // Initialize CodeMirror and setup functionality
 
+    window.advanceOnFire = false;
 
     async function initializeEditor() {
         try {
@@ -174,10 +179,18 @@
                     //         const result = `> ${lineText}`;
 
                     // Display the result
-                    output.textContent = "sent>> " + result.processed;
+                    if (result===null || typeof result === "undefined") {
 
+                    }else {
+                        output.textContent = "sent>> " + result.processed;
+                    }
                     // Uncomment to show the backend result
                     // output.textContent = `Backend Response: ${result.processed}`;
+                    if (window.advanceOnFire) {
+                        const lastLine = editor.lineCount() - 1;
+                        const newLine = Math.min(cursor.line + 1, lastLine);
+                        editor.setCursor({ line: newLine, ch: cursor.ch });
+                    }
                 } catch (error) {
                     output.textContent = `Error: ${error.message}`;
                 }
