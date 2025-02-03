@@ -30,7 +30,7 @@
 }
 
         button {
-        padding: 4px 10px; /* Reduced padding for a shorter appearance */
+        padding: 6px 12px; /* Reduced padding for a shorter appearance */
         margin-right: 10px;
         cursor: pointer;
         border: 1px solid #555; /* Subtle border for contrast */
@@ -38,7 +38,7 @@
         color: #fff; /* White text for contrast */
         border-radius: 4px; /* Slightly rounded corners */
         font-size: 14px; /* Keep the font size readable */
-        transition: background-color 0.3s, box-shadow 0.3s; /* Smooth transitions */
+        transition: background-color 0.1s, box-shadow 0.1s; /* Smooth transitions */
     }
 
     button:hover {
@@ -86,7 +86,7 @@
     <div class="buttons" style="display: flex; flex-direction: column; align-items: flex-end; width: 100px;">
         <button onclick="window.loadFile()" style="width: 100%; margin-bottom: 5px;">Load</button>
         <button onclick="window.saveFile()" style="width: 100%;">Save</button>
-        <button onclick="window.processCurrentLine()" style="width: 100%;">Fire</button>
+        <button onclick="processCurrentLine()" style="width: 100%;">Fire</button>
 
     </div>
 </div>
@@ -116,6 +116,7 @@
             // Add keybinding for Ctrl-Enter or Command-Enter
             editor.addKeyMap({
                 "Ctrl-Enter": processCurrentLine,
+                "Ctrl-G" : processCurrentLine, 
                 "Cmd-Enter": processCurrentLine, // macOS support
             });
 
@@ -180,6 +181,7 @@
                     output.textContent = `Error: ${error.message}`;
                 }
             }
+            window.processCurrentLine = processCurrentLine;
 
             await window.loadFile();
 
