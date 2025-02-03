@@ -1,4 +1,4 @@
-pythonosc
+python-osc
 fastapi
 pydantic
 jinja2
