@@ -30,7 +30,7 @@
 }
 
         button {
-        padding: 6px 12px; /* Reduced padding for a shorter appearance */
+        padding: 4px 10px; /* Reduced padding for a shorter appearance */
         margin-right: 10px;
         cursor: pointer;
         border: 1px solid #555; /* Subtle border for contrast */
@@ -86,6 +86,8 @@
     <div class="buttons" style="display: flex; flex-direction: column; align-items: flex-end; width: 100px;">
         <button onclick="window.loadFile()" style="width: 100%; margin-bottom: 5px;">Load</button>
         <button onclick="window.saveFile()" style="width: 100%;">Save</button>
+        <button onclick="window.processCurrentLine()" style="width: 100%;">Fire</button>
+
     </div>
 </div>
 <textarea id="editor">
