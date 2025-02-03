@@ -35,6 +35,9 @@ def reviseTemplateForPIE(newtpl):
 
 
 import logging
+
+from colorama import just_fix_windows_console
+just_fix_windows_console()
 class ColorFormatter(logging.Formatter):
     # Define ANSI escape codes for colors
     COLORS = {
