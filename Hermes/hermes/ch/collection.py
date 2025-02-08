@@ -48,8 +48,7 @@ class UploadableCollection:
             self.metadatawriter = metadatawriter
         #self.metadatawriter = self.simplemetadatawriter
         self.state = State.INITIALIZED
-        self.s3_unique_prefix = str(self.rel_path).replace(os.sep, "-") + "-" + self.generate_random_string()
-        self.name = f"{file_path} => {self.s3_unique_prefix}"
+        self.name = f"{file_path} => "
         self.files = {}
         self.metadata_file = None
         self.import_module()
@@ -60,7 +59,12 @@ class UploadableCollection:
                 self.file_actions = [file_actions]
         #pprint(self.files)
 
+    def gen_unique_s3_prefix(self):
+        self.s3_unique_prefix = str(self.rel_path).replace(os.sep, "-") + "-" + self.generate_random_string()
+        self.name = f"{self.path} => {self.s3_unique_prefix}"
+
     def import_module(self):
+        self.gen_unique_s3_prefix()
         self.metadata_file_for_notify = f'{self.s3_unique_prefix}-{self.module.dynamic.metadata_file}'
         # self.files[ self.module.dynamic.metadata_file ] = dict(path=self.path / Path(self.module.dynamic.metadata_file),
         #                                                        s3_unique_name=self.metadata_file_for_notify,
@@ -69,9 +73,9 @@ class UploadableCollection:
                                                              s3_unique_name=self.metadata_file_for_notify,
                                                              mimetype="application/json", have=False, uploaded=False,
                                                              filetype="meta")
-
+        self.media_files_for_notify = {}
         for file in self.module.dynamic.media_files:
-            self.media_file_for_notify = f'{self.s3_unique_prefix}-{file["name"]}'
+            self.media_files_for_notify[ file["name"] ] = f'{self.s3_unique_prefix}-{file["name"]}'
             self.files[ file["name"] ] = dict(path=self.path / Path(file["name"]),
                                               s3_unique_name=f'{self.s3_unique_prefix}-{file["name"]}',
                                               mimetype=file["mimetype"],
@@ -86,6 +90,9 @@ class UploadableCollection:
 
     def all_uploaded(self):
         return all(x["uploaded"] for x in self.files.values())
+
+    def reset_counters(self):
+        self.import_module()
 
     def check_new_file(self, file_path):
         hit = False
@@ -137,7 +144,8 @@ class UploadableCollection:
 
             ## TODO Here? Plus array
             if self.all_uploaded():
-                notifier.notify(self.media_file_for_notify, self.metadata_file_for_notify)
+                notifier.notify(self.media_files_for_notify, self.metadata_file_for_notify)
+                self.reset_counters()
 
             return True
         except Exception as err:

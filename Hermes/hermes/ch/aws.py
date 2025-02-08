@@ -18,9 +18,12 @@ class SQSNotifier:
             }
         }
 
-    def notify(self, media_file, metadata_file):
+    def notify(self, media_files, metadata_file):
+        media_arns = {}
+        for k,v in media_files.items():
+            media_arns[k] = f"arn:aws:s3:::{self.bucket}/{v}"
         self.message_body = {
-            "media_arn": f"arn:aws:s3:::{self.bucket}/{media_file}",
+            "media_arns": media_arns, #f"arn:aws:s3:::{self.bucket}/{media_file}",
             "metadata_arn": f"arn:aws:s3:::{self.bucket}/{metadata_file}",
             "pipeline": f"{self.pipeline}"
         }
