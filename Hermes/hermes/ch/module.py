@@ -16,6 +16,13 @@ from pprint import pprint
 def to_namespace(d):
     return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
 import boto3
+from datetime import datetime
+TIME_STRING_FORMAT = "%Y-%m-%dT%H:%M:%S"
+
+import mimetypes
+mimetypes.add_type("image/x-exr", ".exr")
+
+import subprocess
 
 ## config_common_file :  Common configuration file (optional), which can be overridden
 ## config file:  module-specific config
@@ -105,9 +112,49 @@ class GenAIModuleRemote:
         self.logger.debug(f"Metadatawriter: metadata_file: {metadata_file}, media_files: {media_files}")
         overrides= {
                 "metadata_file" : metadata_file["s3_unique_name"],
-                "media_files" : [ { 'name' : f['s3_unique_name'], 'mimetype' : f['mimetype'] } for f in media_files.values() ]
+                "media_files" : [ { 'name' : f['s3_unique_name'], 'mimetype' : f['mimetype'] } for f in media_files.values() ],
+                "timestamp": datetime.now().strftime(TIME_STRING_FORMAT)
             }
         return json.dumps(self.render_template(overrides=overrides), indent=4)
+
+    async def convert_exr_to_png(self, filepath_in, filepath_out):
+        await asyncio.sleep(0)
+        command = [
+            "magick",
+            filepath_in,
+            "-alpha", "off",
+            "-colorspace", "sRGB",
+            "-gamma", "2.2",
+            "-sigmoidal-contrast", "5x50%",
+            filepath_out
+        ]
+        self.logger.info(f"convert_exr_to_png, {filepath_in}, {filepath_out}")
+        try:
+            # Run the command and capture output
+            result = subprocess.run(
+                command,
+                stdout=subprocess.PIPE,  # Capture standard output
+                stderr=subprocess.PIPE,  # Capture standard error
+                text=True,  # Decode output to string
+                check=True  # Raise exception if command fails
+            )
+            # Print the captured output
+            if len(result.stdout.strip())> 0: self.logger.debug(f"Command Output: {result.stdout}" )
+            if len(result.stderr.strip())> 0: self.logger.error(f"convert_exr_to_png errors: f{result.stderr}")
+        except subprocess.CalledProcessError as e:
+            # Handle errors
+            self.logger.error(f"Error occurred: {e.stderr}")
+
+    def fileactions(self, filepath):
+        file = Path(filepath)
+        mime_type, encoding = mimetypes.guess_type(filepath)
+        self.logger.debug(f"fileactions: {mime_type}, {encoding}, {file}")
+        if mime_type=="image/x-exr":
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self.convert_exr_to_png(file, file.with_suffix(".png")))
+            except Exception as e:
+                self.logger.error(f"Error creating async task in fileactions {e}", exc_info=True)
 
     async def manage_create(self, rel_path: Path, file_path: Path) -> None:
         try:
@@ -116,11 +163,11 @@ class GenAIModuleRemote:
                     self.logger.warn(f"Skipping creation of UploadableCollection '{rel_path}', already seen")
                 else:
                     self.logger.info(f"Creating UploadableCollection '{rel_path}'")
-                    self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path, self.metadatawriter, self.logger)
+                    self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path, self.metadatawriter, self.fileactions, self.logger)
             if file_path.is_file():
                 if rel_path.parent not in self.uploadable_collections:
                     self.logger.info(f"Creating UploadableCollection to receive file create '{rel_path.parent}', '{file_path.parent}'")
-                    self.uploadable_collections[rel_path.parent] = UploadableCollection(self.s3, self, file_path.parent, rel_path.parent, self.metadatawriter, self.logger)
+                    self.uploadable_collections[rel_path.parent] = UploadableCollection(self.s3, self, file_path.parent, rel_path.parent, self.metadatawriter, self.fileactions, self.logger)
                 self.logger.debug(f"Checking if UploadableCollections need new file {file_path}")
                 for key, collection in self.uploadable_collections.items():
                     if collection.check_new_file(file_path):
@@ -157,7 +204,7 @@ class GenAIModuleRemote:
                 file_path = Path(file_path)
                 rel_path = file_path.relative_to(watch_path.resolve())
                 self.logger.debug(f"Change: {change.name} {rel_path}")
-                if change == Change.added:
+                if change == Change.added or (self.config.ue.upload_on_modified and change == Change.modified):
                     if rel_path in debounce_list:
                         t = time.time() - debounce_list[rel_path]
                         if t < self.DEBOUNCE_SEC:
@@ -171,7 +218,7 @@ class GenAIModuleRemote:
                         if file_path.is_dir() and not re.fullmatch(collection_matcher, str(rel_path.name)):
                             self.logger.warning(f"Skipping new path '{rel_path.name}' that does not match module's collection format '{self.config.ue.collection_matcher}'")
                             continue
-                        self.logger.debug(f"Detected new file or directory: {rel_path}")
+                        self.logger.debug(f"Detected file or directory: {rel_path}")
                         asyncio.create_task(self.manage_create(rel_path, file_path))
                 elif change == Change.deleted:
                     asyncio.create_task(self.manage_delete(rel_path, file_path))

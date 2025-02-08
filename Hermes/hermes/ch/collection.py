@@ -35,7 +35,7 @@ class State(StrEnum):
 import random, string
 class UploadableCollection:
 
-    def __init__(self, s3, module: "GenAIModuleRemote", file_path : Path,  rel_path : Path, metadatawriter=None, logger=None):
+    def __init__(self, s3, module: "GenAIModuleRemote", file_path : Path,  rel_path : Path, metadatawriter=None, file_actions=None, logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.s3 = s3
         self.logger.setLevel(logging.DEBUG)
@@ -53,7 +53,12 @@ class UploadableCollection:
         self.files = {}
         self.metadata_file = None
         self.import_module()
-        pprint(self.files)
+        if file_actions is not None:
+            if type(file_actions) is list:
+                self.file_actions = file_actions
+            else:
+                self.file_actions = [file_actions]
+        #pprint(self.files)
 
     def import_module(self):
         self.metadata_file_for_notify = f'{self.s3_unique_prefix}-{self.module.dynamic.metadata_file}'
@@ -88,6 +93,9 @@ class UploadableCollection:
             #print(file_path, file["path"], file_path==file["path"])
             if file_path==file["path"]:
                 file["have"] = True
+                if self.file_actions is not None:
+                    for f in self.file_actions:
+                        f(file["path"])
                 return True
         return False
 

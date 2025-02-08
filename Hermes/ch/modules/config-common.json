@@ -8,7 +8,8 @@
   },
   "ue": {
     "media_watch_dir": "input",
-    "collection_matcher" : "^[+-]?\\d+$"
+    "collection_matcher" : "^[+-]?\\d+$",
+    "upload_on_modified": true
   },
   "s3": {
     "input_bucket": "dev-xanadu-raw-input",
