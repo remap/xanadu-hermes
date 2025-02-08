@@ -31,6 +31,13 @@ import subprocess
 from hermes.ch.collection import UploadableCollection
 from hermes.ch.aws import SQSNotifier
 
+
+
+## GenAIModuleRemote implements the logic to gather files and upload them to a remote AI processing module
+## Right now, a few things, like EXR => PNG conversion when needed, are baked in
+## But trying to do what we can in Jinja templates
+##
+
 class GenAIModuleRemote:
 
     # self.config and self.dynamic are module-wide vars
@@ -111,6 +118,7 @@ class GenAIModuleRemote:
     def metadatawriter(self, metadata_file, media_files):
         self.logger.debug(f"Metadatawriter: metadata_file: {metadata_file}, media_files: {media_files}")
         overrides= {
+                "metadata_local_path": str(metadata_file["path"].parent),
                 "metadata_file" : metadata_file["s3_unique_name"],
                 "media_files" : [ { 'name' : f['s3_unique_name'], 'mimetype' : f['mimetype'] } for f in media_files.values() ],
                 "timestamp": datetime.now().strftime(TIME_STRING_FORMAT)

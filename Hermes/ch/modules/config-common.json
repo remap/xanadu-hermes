@@ -2,13 +2,13 @@
   "instance": "xanadu",
   "target_environment": "dev",
   "metadata": {
-    "template_file": "metadata_template.json",
+    "template_file": "metadata_template.jsont",
     "parser": "jinja2",
     "output_dir": "output"
   },
   "ue": {
     "media_watch_dir": "input",
-    "collection_matcher" : "^[+-]?\\d+$",
+    "collection_matcher" : "^(?:[+-]?\\d+|melpomene|calliope|thalia|euterpe|terpsicore|erato|kira)$\n",
     "upload_on_modified": true
   },
   "s3": {
