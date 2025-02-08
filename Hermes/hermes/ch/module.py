@@ -26,6 +26,9 @@ from hermes.ch.aws import SQSNotifier
 
 class GenAIModuleRemote:
 
+    # self.config and self.dynamic are module-wide vars
+    # to override for writing a specific metadata, pass overrides into metadata  template
+
     def __init__(self, s3, sqs, config_file: str, config_common_file: str = None, base_dir = '.', logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.s3 = s3
@@ -36,6 +39,8 @@ class GenAIModuleRemote:
         self.config_common_file = Path(config_common_file)
         self.DEBOUNCE_SEC = 1
         self.uploadable_collections = {}
+        self.dynamic_vars = {}  # dict version
+        self.dynamic = None # Becomes simplenamespace of dynamic_vars
         if  self.config_common_file is not None:
             try:
                 with open(self.config_common_file) as f:
@@ -57,17 +62,21 @@ class GenAIModuleRemote:
         self.output_dir = self.base_dir / Path(self.config.metadata.output_dir)
         self.notifier = SQSNotifier(self.sqs, self.config.sqs.notify_url, self.config.s3.input_bucket, self.config.pipeline.name, self.config.module, self.config.pipeline.start_phase, self.logger)
 
-    def load_dynamic(self, dynamic_vars: dict):
-        self.dynamic = to_namespace(dynamic_vars)
-        self._extra_vars = dynamic_vars
+    def load_dynamic(self, dynamic_vars: dict, merge=False):
+        if merge:
+            self.dynamic_vars = self.dynamic_vars | dynamic_vars
+        else:
+            self.dynamic_vars = dynamic_vars
+        self.dynamic = to_namespace(self.dynamic_vars)
+        self._extra_vars = self.dynamic_vars
 
-    def render_template(self, template_path = None):
+    def render_template(self, template_path = None, overrides ={}):
         if template_path is None: template_path = self.config_dir / self.config.metadata.template_file
         try:
             with open(template_path) as f:
                 tmpl = f.read()
             template = jinja2.Template(tmpl)
-            context = {"config": self.config, **self._extra_vars, "dynamic": self.dynamic}
+            context = {"config": self.config, **(self._extra_vars | overrides), "dynamic": self.dynamic}
             rendered = template.render(context)
             return json.loads(rendered)
         except json.JSONDecodeError as e:
@@ -88,29 +97,42 @@ class GenAIModuleRemote:
                 json.dump(rendered, f, indent=2)
             return output_path
         except Exception as e:
-            self.logger.error(f"Error writing rendered template to '{output_path}': {e}")
+            self.logger.error(f"Error writing rendered template to '{output_path}': {e}", exc_info=True)
             raise
 
+    # called by uploadable collection
+    def metadatawriter(self, metadata_file, media_files):
+        self.logger.debug(f"Metadatawriter: metadata_file: {metadata_file}, media_files: {media_files}")
+        overrides= {
+                "metadata_file" : metadata_file["s3_unique_name"],
+                "media_files" : [ { 'name' : f['s3_unique_name'], 'mimetype' : f['mimetype'] } for f in media_files.values() ]
+            }
+        return json.dumps(self.render_template(overrides=overrides), indent=4)
 
     async def manage_create(self, rel_path: Path, file_path: Path) -> None:
-        if file_path.is_dir():
-            if rel_path in self.uploadable_collections:
-                self.logger.warn(f"Skipping creation of UploadableCollection '{rel_path}', already seen")
+        try:
+            if file_path.is_dir():
+                if rel_path in self.uploadable_collections:
+                    self.logger.warn(f"Skipping creation of UploadableCollection '{rel_path}', already seen")
+                else:
+                    self.logger.info(f"Creating UploadableCollection '{rel_path}'")
+                    self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path, self.metadatawriter, self.logger)
+            if file_path.is_file():
+                if rel_path.parent not in self.uploadable_collections:
+                    self.logger.info(f"Creating UploadableCollection to receive file create '{rel_path.parent}', '{file_path.parent}'")
+                    self.uploadable_collections[rel_path.parent] = UploadableCollection(self.s3, self, file_path.parent, rel_path.parent, self.metadatawriter, self.logger)
+                self.logger.debug(f"Checking if UploadableCollections need new file {file_path}")
+                for key, collection in self.uploadable_collections.items():
+                    if collection.check_new_file(file_path):
+                        self.logger.debug(f"Hit UploadableCollection {key}")
+                        #if collection.ready_to_upload():
+                            #self.logger.info(f"Ready to upload UploadableCollection {key}")
+                        collection.upload_if_ready(self.notifier)
+                return
             else:
-                self.logger.info(f"Creating UploadableCollection '{rel_path}'")
-                self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path, self.logger)
-        elif file_path.is_file():
-            self.logger.debug(f"Checking if UploadableCollections need new file {file_path}")
-            for key, collection in self.uploadable_collections.items():
-                if collection.check_new_file(file_path):
-                    self.logger.debug(f"Hit UploadableCollection {key}")
-                    #if collection.ready_to_upload():
-                        #self.logger.info(f"Ready to upload UploadableCollection {key}")
-                    collection.upload_if_ready(self.notifier)
-            return
-        else:
-            return
-
+                return
+        except Exception as e:
+            self.logger.error("Exception in manage_create {e} ", exc_info=True)
     async def manage_delete(self, rel_path: Path, file_path: Path) -> None:
         self.logger.debug(f"manage_delete {rel_path} {file_path}")
         if rel_path in self.uploadable_collections:

@@ -1,3 +1,4 @@
+import json
 class SQSNotifier:
 
     def __init__(self, sqs, queue_url, bucket,  pipeline, module, start_phase, logger=None):

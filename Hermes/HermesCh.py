@@ -21,8 +21,8 @@ if __name__=="__main__":
     logger = logging.getLogger("main")
     logger.setLevel(logging.DEBUG)
     # Configuration
-    S3_BUCKE
-    DIR = '../../chtesting'
+    S3_BUCKET = 'dev-xanadu-raw-input'
+    WATCH_DIR = '../../chtesting'
     WATCH_PATH = Path(WATCH_DIR)
 
     logger.info(f"Hermes-Chrysopoeia Watcher {WATCH_PATH.resolve()}")
@@ -49,7 +49,7 @@ if __name__=="__main__":
                             remotes[remote.config.module] = remote
                             logger.info(f"Loaded config for module '{remote.config.module}' from {config_file}")
                         except Exception as e:
-                            logger.error(f"Failed to load module config for module '{remote.config.module}': {e}")
+                            logger.error(f"Failed to load module config for module '{remote.config.module}': {e}", exc_info=True)
                     else:
                         logger.warning(f"No config.json found in {subpath}")
             return remotes
@@ -73,10 +73,15 @@ if __name__=="__main__":
 
             for module_name, remote in remotes.items():
                 remote.load_dynamic( {
+                # These are the files to watch for
                 "media_files": [
                     {
                     "name" : "media.png",
                     "mimetype" : "image/png"
+                    },
+                    {
+                    "name" : "media.exr",
+                    "mimetype" : "image/x-exr"
                     }
                 ],
                 "metadata_file": "metadata.json",
@@ -85,14 +90,14 @@ if __name__=="__main__":
                 "tags": ["tag1", "tag2"],
                 "timestamp": "2025-01-31T12:00:00"
                 })
-                print("---- CONFIG ----")
-                pprint(remote.config)
-                print("---- DYNAMIC ----")
-                pprint(remote.dynamic)
-                metadata_rendered = remote.render_template()
-                print("---- METADATA ----")
-                print (jformat(metadata_rendered))
-                print(remote.write_template())
+                # print("---- CONFIG ----")
+                # pprint(remote.config)
+                # print("---- DYNAMIC ----")
+                # pprint(remote.dynamic)
+                # metadata_rendered = remote.render_template()
+                # print("---- METADATA ----")
+                # print (jformat(metadata_rendered))
+                # print(remote.write_template())
 
             logger.info("Running async watchers...")
 
