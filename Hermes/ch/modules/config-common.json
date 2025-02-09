@@ -18,6 +18,9 @@
   "sqs": {
     "notify_url": "https://sqs.us-west-2.amazonaws.com/976618892613/dev-xanadu"
   },
+  "sns": {
+    "monitor_arn": "arn:aws:sns:us-west-2:976618892613:dev-xanadu"
+  },
   "firebase": {
     "notify_key": "/xanadu/ch/notify"
   }

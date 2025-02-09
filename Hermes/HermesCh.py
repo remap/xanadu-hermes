@@ -30,12 +30,13 @@ if __name__=="__main__":
     # Create an S3 client
     s3 = boto3.client('s3')
     sqs = boto3.client('sqs')
+    sns = boto3.client('sns')
     pending_uploads = {}
     DEBOUNCE_SEC = 1
 
     if __name__ == '__main__':
 
-        def load_remote_configs(s3, sqs, common_config: str, module_dir: str, module_config_filename: str) -> dict :
+        def load_remote_configs(s3, sqs, sns, common_config: str, module_dir: str, module_config_filename: str) -> dict :
             #logger = logging.getLogger(__name__)
             logger.setLevel(logging.DEBUG)
             module_dir = Path(module_dir)
@@ -45,7 +46,7 @@ if __name__=="__main__":
                     config_file = subpath / module_config_filename
                     if config_file.exists():
                         try:
-                            remote = GenAIModuleRemote(s3, sqs, config_file, config_common_file=common_config, base_dir=subpath, logger=logger)
+                            remote = GenAIModuleRemote(s3, sqs, sns, config_file, config_common_file=common_config, base_dir=subpath, logger=logger)
                             remotes[remote.config.module] = remote
                             logger.info(f"Loaded config for module '{remote.config.module}' from {config_file}")
                         except Exception as e:
@@ -62,7 +63,7 @@ if __name__=="__main__":
 
             ## Config data is configured per module
             ##
-            remotes = load_remote_configs(s3=s3, sqs=sqs, common_config="ch/modules/config-common.json", module_dir="ch/modules", module_config_filename="config.json")
+            remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config="ch/modules/config-common.json", module_dir="ch/modules", module_config_filename="config.json")
 
             ## Dynamic data is created at run-time during the show
             ## It is what is watched for.

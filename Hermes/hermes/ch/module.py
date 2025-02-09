@@ -43,10 +43,13 @@ class GenAIModuleRemote:
     # self.config and self.dynamic are module-wide vars
     # to override for writing a specific metadata, pass overrides into metadata  template
 
-    def __init__(self, s3, sqs, config_file: str, config_common_file: str = None, base_dir = '.', logger=None):
+    def __init__(self, s3, sqs, sns, config_file: str, config_common_file: str = None, base_dir = '.', logger=None):
         self.logger = logger or logging.getLogger(__name__)
+        # we do this here so we could control credentials here
         self.s3 = s3
         self.sqs = sqs
+        self.sns = sns
+        #
         self.base_dir = Path(base_dir)
         self.config_file = Path(config_file)
         self.config_dir = self.config_file.parent
@@ -74,7 +77,9 @@ class GenAIModuleRemote:
             raise
         self.config = to_namespace(self._config_dict)
         self.output_dir = self.base_dir / Path(self.config.metadata.output_dir)
-        self.notifier = SQSNotifier(self.sqs, self.config.sqs.notify_url, self.config.s3.input_bucket, self.config.pipeline.name, self.config.module, self.config.pipeline.start_phase, self.logger)
+        self.notifier = SQSNotifier(self.sqs, self.sns, self.config.sqs.notify_url, self.config.s3.input_bucket, self.config.pipeline.name, self.config.module, self.config.pipeline.start_phase, self.logger)
+
+
 
     def load_dynamic(self, dynamic_vars: dict, merge=False):
         if merge:
@@ -207,6 +212,9 @@ class GenAIModuleRemote:
         self.logger.debug(f"Module {self.config.module} watching {watch_path}")
         debounce_list = {}
         collection_matcher = re.compile(self.config.ue.collection_matcher)   # filter new directories based on regexp
+
+        monitor_task = asyncio.create_task(asyncio.to_thread(self.notifier.monitor))
+
         async for changes in awatch(watch_path):
             for change, file_path in changes:
                 file_path = Path(file_path)
