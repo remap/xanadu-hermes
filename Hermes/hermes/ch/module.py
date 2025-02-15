@@ -15,7 +15,7 @@ from hermes.utils import jformat
 from pprint import pprint
 import boto3
 from datetime import datetime
-import subprocess
+from hermes.ch.media import convert_exr_to_png
 import mimetypes
 mimetypes.add_type("image/x-exr", ".exr")
 from hermes.ch.collection import UploadableCollection
@@ -136,33 +136,7 @@ class GenAIModuleRemote:
             }
         return json.dumps(self.render_template(overrides=overrides), indent=4)
 
-    async def convert_exr_to_png(self, filepath_in, filepath_out):
-        await asyncio.sleep(0)
-        command = [
-            "magick",
-            filepath_in,
-            "-alpha", "off",
-            "-colorspace", "sRGB",
-            "-gamma", "2.2",
-            "-sigmoidal-contrast", "5x50%",
-            filepath_out
-        ]
-        self.logger.info(f"convert_exr_to_png, {filepath_in}, {filepath_out}")
-        try:
-            # Run the command and capture output
-            result = subprocess.run(
-                command,
-                stdout=subprocess.PIPE,  # Capture standard output
-                stderr=subprocess.PIPE,  # Capture standard error
-                text=True,  # Decode output to string
-                check=True  # Raise exception if command fails
-            )
-            # Print the captured output
-            if len(result.stdout.strip())> 0: self.logger.debug(f"Command Output: {result.stdout}" )
-            if len(result.stderr.strip())> 0: self.logger.error(f"convert_exr_to_png errors: f{result.stderr}")
-        except subprocess.CalledProcessError as e:
-            # Handle errors
-            self.logger.error(f"Error occurred: {e.stderr}")
+
 
     def fileactions(self, filepath):
         file = Path(filepath)
@@ -171,7 +145,7 @@ class GenAIModuleRemote:
         if mime_type=="image/x-exr":
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(self.convert_exr_to_png(file, file.with_suffix(".png")))
+                loop.create_task(convert_exr_to_png(file, file.with_suffix(".png")))
             except Exception as e:
                 self.logger.error(f"Error creating async task in fileactions {e}", exc_info=True)
 
