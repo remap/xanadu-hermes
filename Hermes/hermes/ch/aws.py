@@ -3,13 +3,16 @@ import boto3
 import asyncio
 class SQSNotifier:
 
-    def __init__(self, sqs, sns, queue_url, bucket,  pipeline, module, start_phase, logger=None):
+    def __init__(self, sqs, sns, notify_queue_name, listen_queue_name, listen_topic_arn, listen_callback,  bucket,  pipeline, module, start_phase, logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.sqs = sqs
         self.sns = sns
-        self.queue_url = queue_url
+        self.notify_queue_name = notify_queue_name
+        self.listen_queue_name = listen_queue_name
+        self.listen_topic_arn = listen_topic_arn
         self.bucket = bucket
         self.pipeline = pipeline
+        self.listen_callback = listen_callback
         self.message_attributes = {
             "module": {
                 "DataType": "String",
@@ -21,55 +24,109 @@ class SQSNotifier:
             }
         }
 
-    #TODO: Not finished
-    def monitor(self):
-        return
-        self.logger.debug("starting SQSNotifier.monitor")
-        self.topic_arn = "arn:aws:sns:us-west-2:976618892613:dev-xanadu"
-        queue = self.sqs.create_queue(
-            QueueName=f"sns_queue_hermes_ch",
-            Attributes={"ReceiveMessageWaitTimeSeconds": "20"}
-        )
-        self.logger.debug(f"queue {queue}")
-        self.queue_url = queue["QueueUrl"]
-        self.queue_arn = self.sqs.get_queue_attributes(
-            QueueUrl=self.queue_url,
-            AttributeNames=["QueueArn"]
-        )["Attributes"]["QueueArn"]
-        policy = {
-            "Version": "2012-10-17",
-            "Id": f"{self.queue_arn}/SQSDefaultPolicy",
-            "Statement": [{
-                "Sid": "Allow-SNS-SendMessage",
-                "Effect": "Allow",
-                "Principal": "*",
-                "Action": "SQS:SendMessage",
-                "Resource": self.queue_arn,
-                "Condition": {"ArnEquals": {"aws:SourceArn": self.topic_arn}}
-            }]
-        }
-        self.sqs.set_queue_attributes(
-            QueueUrl=self.queue_url,
-            Attributes={"Policy": json.dumps(policy)}
-        )
-        self.sns.subscribe(
-            TopicArn=self.topic_arn,
-            Protocol="sqs",
-            Endpoint=self.queue_arn
-        )
-        self.logger.debug("waiting...")
-        while True:
-            msgs = self.sqs.receive_message(
-                QueueUrl=self.queue_url,
-                WaitTimeSeconds=20,
-                MaxNumberOfMessages=10
-            )
-            for msg in msgs.get("Messages", []):
-                self.logger.info(json.loads(msg["Body"]))
-                self.sqs.delete_message(
-                    QueueUrl=self.queue_url,
-                    ReceiptHandle=msg["ReceiptHandle"]
+        # notify_queue, used to tell lambda to process
+        # Only one, get it.
+        try:
+            response = sqs.get_queue_url(QueueName=self.notify_queue_name)
+            self.notify_queue_url = response["QueueUrl"]
+            self.logger.info(f"SQS Notify Queue: URL: {self.notify_queue_url}")
+        except Exception as error:
+            self.logger.error("SQS Notify Error getting notify queue url:", error)
+            self.notify_queue_url = None
+
+        # listen_queue, used for SNS subscriptions
+        # Use one specific to our instance, create if needed
+        #
+        try:
+            response = sqs.get_queue_url(QueueName=self.listen_queue_name)
+            self.listen_queue_url = response["QueueUrl"]
+            self.logger.info(f"SQS Listen Queue: URL: {self.listen_queue_url}")
+        except sqs.exceptions.QueueDoesNotExist:
+            # Create the listen_queue if needed
+            response = sqs.create_queue(QueueName=self.listen_queue_name)
+            self.listen_queue_url = response["QueueUrl"]
+            self.logger.warning(f"SQS Listen Queue does not exist, created: {self.listen_queue_url}")
+            self.listen_subscribe_policy = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {"Service": "sns.amazonaws.com"},
+                        "Action": "sqs:SendMessage",
+                        "Resource": self.listen_queue_arn,
+                        "Condition": {"ArnEquals": {"aws:SourceArn": self.listen_topic_arn}},
+                    }
+                ],
+            }
+            try:
+                sqs.set_queue_attributes(
+                    QueueUrl=self.listen_queue_url,
+                    Attributes={"Policy": json.dumps(self.listen_subscribe_policy)},
                 )
+            except Exception as error:
+                self.logger.error("SQS Listen Error setting queue policy:", error, exc_info=True)
+                self.listen_queue_arn = None
+        except Exception as error:
+            self.logger.error("SQS Listen An error occurred:", error)
+            self.listen_queue_url = None
+
+        # Purge the queue
+        try:
+            response = self.sqs.purge_queue(QueueUrl=self.listen_queue_url)
+            self.logger.debug("Queue purged successfully.")
+        except Exception as error:
+            # This will catch errors like if you try to purge within 60 seconds of a previous purge
+            self.logger.error(f"Error purging queue {self.listen_queue_url}:", error)
+
+        # Get the corresponding ARN
+        try:
+            self.listen_queue_arn = self.sqs.get_queue_attributes(
+                QueueUrl=self.listen_queue_url,
+                AttributeNames=["QueueArn"]
+            )["Attributes"]["QueueArn"]
+        except Exception as error:
+            self.logger.error("SQS Listen Error getting listen queue arn:", error)
+            self.listen_queue_arn = None
+
+
+
+    def monitor(self):
+
+        self.logger.debug("starting SQSNotifier.monitor")
+
+        try:
+            self.sns.subscribe(
+                TopicArn=self.listen_topic_arn,
+                Protocol="sqs",
+                Endpoint=self.listen_queue_arn,
+            )
+            self.logger.info(f"Subscribed {self.listen_queue_arn} to {self.listen_topic_arn}")
+        except Exception as e:
+            self.logger.error(f"SQS Notify exception subscribing {self.listen_queue_arn} to {self.listen_topic_arn}", exc_info=True)
+
+
+        #self.logger.debug("waiting...")
+        while True:
+            #self.logger.debug("Waiting for SQS...")
+            try:
+                msgs = self.sqs.receive_message(
+                    QueueUrl=self.listen_queue_url,
+                    WaitTimeSeconds=5,
+                    MaxNumberOfMessages=10
+                )
+                for msg in msgs.get("Messages", []):
+                    payload =  json.loads(msg["Body"])["Message"]
+                    self.logger.debug(f"SQS Notify Received message: {payload}")
+                    try:
+                        self.listen_callback(payload)
+                    except Exception as e:
+                        self.logger.error("Exception in SQS Notify listen_callback", exc_info=True )
+                    self.sqs.delete_message(
+                        QueueUrl=self.listen_queue_url,
+                        ReceiptHandle=msg["ReceiptHandle"]
+                    )
+            except Exception as e:
+                self.logger.error("Error in SQS Notify monitor loop", exc_info=True)
 
     def notify(self, media_files, metadata_file):
         media_arns = {}
@@ -80,11 +137,11 @@ class SQSNotifier:
             "metadata_arn": f"arn:aws:s3:::{self.bucket}/{metadata_file}",
             "pipeline": f"{self.pipeline}"
         }
-        self.logger.debug(self.queue_url)
+        self.logger.debug(self.notify_queue_url)
         self.logger.debug(self.message_body)
         self.logger.debug(self.message_attributes)
         response = self.sqs.send_message(
-            QueueUrl=self.queue_url,
+            QueueUrl=self.notify_queue_url,
             MessageBody=json.dumps(self.message_body),
             MessageAttributes=self.message_attributes
         )

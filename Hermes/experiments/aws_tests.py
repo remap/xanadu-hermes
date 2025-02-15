@@ -12,59 +12,83 @@ session = boto3.Session(
     aws_secret_access_key=config.secret_key,
     region_name=config.region_name
 )
-client = session.client('s3')
-response = client.list_buckets()
 
-pprint.pp(response)
-print("\n --- \n")
-pprint.pp(glom(response, 'Buckets.*.Name'))
-
-print("\n --- \n")
+# client = session.client('s3')
+# response = client.list_buckets()
+#
+# pprint.pp(response)
+# print("\n --- \n")
+# pprint.pp(glom(response, 'Buckets.*.Name'))
+#
+# print("\n --- \n")
 
 
 import boto3
 import json
 import threading
+import uuid
+import sys
+import time
+from datetime import datetime
 
-queue_name = "temporary-queue"
-sns_topic_arn = "arn:aws:sns:us-west-2:976618892613:dev-xanadu--ch1--raw-input--to--preprocess"
+environ = "dev"
+instance = "jb_testing"
+queue_name = f"{environ}-xanadu-hermes-ch-{instance}"
+print(queue_name)
+queue_url = "https://sqs.us-west-2.amazonaws.com/976618892613/" + queue_name
+sns_topic_arn = f"arn:aws:sns:us-west-2:976618892613:{environ}-xanadu"   # TODO: instance?
 
 sqs = session.client("sqs")
 sns = session.client("sns")
 
-response = sqs.create_queue(QueueName=queue_name)
-queue_url = response["QueueUrl"]
+try:
+    response = sqs.get_queue_url(QueueName=queue_name)
+    print("Queue exists. URL:", response['QueueUrl'])
+    queue_url = response["QueueUrl"]
+except sqs.exceptions.QueueDoesNotExist:
+    print("Queue does not exist, creating.")
+    response = sqs.create_queue(QueueName=queue_name)
+    queue_url = response["QueueUrl"]
+except botocore.exceptions.ClientError as error:
+    print("An error occurred:", error)
+    queue_url = None
 
 queue_attributes = sqs.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])
 queue_arn = queue_attributes["Attributes"]["QueueArn"]
 
-sns.subscribe(
-    TopicArn=sns_topic_arn,
-    Protocol="sqs",
-    Endpoint=queue_arn,
-)
-
-policy = {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {"Service": "sns.amazonaws.com"},
-            "Action": "sqs:SendMessage",
-            "Resource": queue_arn,
-            "Condition": {"ArnEquals": {"aws:SourceArn": sns_topic_arn}},
-        }
-    ],
-}
-
-sqs.set_queue_attributes(
-    QueueUrl=queue_url,
-    Attributes={"Policy": json.dumps(policy)},
-)
+print(queue_url)
+print(queue_arn)
+try:
+    sns.subscribe(
+        TopicArn=sns_topic_arn,
+        Protocol="sqs",
+        Endpoint=queue_arn,
+    )
+    print(f"Subscribed {queue_arn} to {sns_topic_arn}")
+except Exception as e:
+    print("exception subscribing")
+#
+# policy = {
+#     "Version": "2012-10-17",
+#     "Statement": [
+#         {
+#             "Effect": "Allow",
+#             "Principal": {"Service": "sns.amazonaws.com"},
+#             "Action": "sqs:SendMessage",
+#             "Resource": queue_arn,
+#             "Condition": {"ArnEquals": {"aws:SourceArn": sns_topic_arn}},
+#         }
+#     ],
+# }
+# sqs.set_queue_attributes(
+#     QueueUrl=queue_url,
+#     Attributes={"Policy": json.dumps(policy)},
+# )
 
 def listen_to_sqs():
     try:
         while True:
+            #print("loop")
             messages = sqs.receive_message(
                 QueueUrl=queue_url,
                 MaxNumberOfMessages=10,
@@ -72,7 +96,7 @@ def listen_to_sqs():
             )
             if "Messages" in messages:
                 for message in messages["Messages"]:
-                    print("Received message:", message["Body"])
+                    print("Received message:", json.loads(message["Body"])["Message"])
                     sqs.delete_message(
                         QueueUrl=queue_url,
                         ReceiptHandle=message["ReceiptHandle"],
@@ -86,18 +110,21 @@ print("Listener started. Press Ctrl+C to stop.")
 
 
 client = session.client('sns')
-msg = """
-    {
+msg = f"""
+    {{
       "media_arn": "arn:aws:s3:::dev-xanadu-raw-input/person.png",
-      "metadata_arn": "arn:aws:s3:::dev-xanadu-raw-input/person.json"
-    }
+      "metadata_arn": "arn:aws:s3:::dev-xanadu-raw-input/person.json",
+      "time": {datetime.now()}
+    }}
 """
 response = client.publish(
-    TopicArn = "arn:aws:sns:us-west-2:976618892613:dev-xanadu--ch1--raw-input--to--preprocess",
+    TopicArn = sns_topic_arn,
     Message = msg,
 )
-pprint.pp(response)
-print("\n --- \n")
+time.sleep(2)
+print("Publishing a test message", msg)
+#pprint.pp(response)
+#print("\n --- \n")
 pprint.pp(glom(response, 'ResponseMetadata.HTTPStatusCode'))
 
 
@@ -106,7 +133,8 @@ try:
     while True:
         pass
 except KeyboardInterrupt:
-    sqs.delete_queue(QueueUrl=queue_url)
-    print("Queue deleted.")
+    pass
+    # sqs.delete_queue(QueueUrl=queue_url)
+    # print("Queue deleted.")
 
 

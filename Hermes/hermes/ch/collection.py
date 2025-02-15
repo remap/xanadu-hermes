@@ -35,7 +35,7 @@ class State(StrEnum):
 import random, string
 class UploadableCollection:
 
-    def __init__(self, s3, module: "GenAIModuleRemote", file_path : Path,  rel_path : Path, metadatawriter=None, file_actions=None, logger=None):
+    def __init__(self, s3, module: "GenAIModuleRemote", file_path : Path,  rel_path : Path, metadatawriter=None, file_actions=None, logger=None, notifier=None, loadExisting=False):
         self.logger = logger or logging.getLogger(__name__)
         self.s3 = s3
         self.logger.setLevel(logging.DEBUG)
@@ -51,6 +51,7 @@ class UploadableCollection:
         self.name = f"{file_path} => "
         self.files = {}
         self.metadata_file = None
+        self.notifier = notifier
         self.import_module()
         if file_actions is not None:
             if type(file_actions) is list:
@@ -58,6 +59,18 @@ class UploadableCollection:
             else:
                 self.file_actions = [file_actions]
         #pprint(self.files)
+
+        # If the directory is created with files in it (e.g., a folder copy)
+        # May not trigger changes for everything already there.
+        # If that becomes an issues, could use this:
+        # TODO: The relationship of this with actions needs work... (png changes underneath)
+        self.loadExisting = loadExisting
+        if self.loadExisting:
+            for item in self.path.resolve().iterdir():
+                if item.is_file():
+                    logging.warning(f'Collection {self.name} loading existing {item}')
+                    self.check_new_file(item)
+            self.upload_if_ready()
 
     def gen_unique_s3_prefix(self):
         self.s3_unique_prefix = str(self.rel_path).replace(os.sep, "-") + "-" + self.generate_random_string()
@@ -106,7 +119,7 @@ class UploadableCollection:
                 return True
         return False
 
-    def upload_if_ready(self, notifier):
+    def upload_if_ready(self):
         if not self.ready_to_upload() or self.all_uploaded():
             return
         self.logger.info(f"Ready to upload {self.name}, calling metadatawriter for {self.metadata_file['path']}")
@@ -121,13 +134,13 @@ class UploadableCollection:
 
         for file_info in self.files.values():
             if not file_info["uploaded"]:
-                asyncio.create_task(self.upload_to_s3(file_info["path"], file_info["s3_unique_name"], notifier))
+                asyncio.create_task(self.upload_to_s3(file_info["path"], file_info["s3_unique_name"], self.notifier))
                 file_info["uploaded"] = True
             else:
                 self.logger.debug(f'Skipping upload already done for {file_info["path"]}')
 
         if not self.metadata_file["uploaded"]:
-            asyncio.create_task(self.upload_to_s3(self.metadata_file["path"], self.metadata_file["s3_unique_name"], notifier))
+            asyncio.create_task(self.upload_to_s3(self.metadata_file["path"], self.metadata_file["s3_unique_name"], self.notifier))
             self.metadata_file["uploaded"] = True
         else:
             self.logger.debug(f'Skipping upload already done for {self.metadata_file["path"]}')

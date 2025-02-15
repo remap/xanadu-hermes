@@ -77,7 +77,15 @@ class GenAIModuleRemote:
             raise
         self.config = to_namespace(self._config_dict)
         self.output_dir = self.base_dir / Path(self.config.metadata.output_dir)
-        self.notifier = SQSNotifier(self.sqs, self.sns, self.config.sqs.notify_url, self.config.s3.input_bucket, self.config.pipeline.name, self.config.module, self.config.pipeline.start_phase, self.logger)
+
+        ## Setup notifier and callback
+
+        self.listen_callback = lambda m : self.logger.info(f"Module {self.config.module} callback received message: \n{jformat(json.loads(m))}")
+        self.notifier = SQSNotifier(self.sqs, self.sns, self.config.sqs.notify_queue_name,
+                                    self.config.sqs.listen_queue_name, self.config.sns.listen_topic_arn,
+                                    self.listen_callback,
+                                    self.config.s3.input_bucket, self.config.pipeline.name, self.config.module,
+                                    self.config.pipeline.start_phase, self.logger)
 
 
 
@@ -176,18 +184,18 @@ class GenAIModuleRemote:
                     self.logger.warn(f"Skipping creation of UploadableCollection '{rel_path}', already seen")
                 else:
                     self.logger.info(f"Creating UploadableCollection '{rel_path}'")
-                    self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path, self.metadatawriter, self.fileactions, self.logger)
+                    self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path, self.metadatawriter, self.fileactions, self.logger, self.notifier)
             if file_path.is_file():
                 if rel_path.parent not in self.uploadable_collections:
                     self.logger.info(f"Creating UploadableCollection to receive file create '{rel_path.parent}', '{file_path.parent}'")
-                    self.uploadable_collections[rel_path.parent] = UploadableCollection(self.s3, self, file_path.parent, rel_path.parent, self.metadatawriter, self.fileactions, self.logger)
+                    self.uploadable_collections[rel_path.parent] = UploadableCollection(self.s3, self, file_path.parent, rel_path.parent, self.metadatawriter, self.fileactions, self.logger, self.notifier)
                 self.logger.debug(f"Checking if UploadableCollections need new file {file_path}")
                 for key, collection in self.uploadable_collections.items():
                     if collection.check_new_file(file_path):
                         self.logger.debug(f"Hit UploadableCollection {key}")
                         #if collection.ready_to_upload():
                             #self.logger.info(f"Ready to upload UploadableCollection {key}")
-                        collection.upload_if_ready(self.notifier)
+                        collection.upload_if_ready()
                 return
             else:
                 return
@@ -209,7 +217,7 @@ class GenAIModuleRemote:
     async def watch_directory(self) -> None:
         """Watch the directory for new files and upload them."""
         watch_path = Path(self.base_dir / self.config.ue.media_watch_dir)
-        self.logger.debug(f"Module {self.config.module} watching {watch_path}")
+        self.logger.info(f"Module {self.config.module} watching {watch_path}")
         debounce_list = {}
         collection_matcher = re.compile(self.config.ue.collection_matcher)   # filter new directories based on regexp
 
@@ -232,7 +240,7 @@ class GenAIModuleRemote:
                         debounce_list[file_path] = time.time()
                         # Schedule the upload without awaiting (i.e. fire-and-forget)
                         if file_path.is_dir() and not re.fullmatch(collection_matcher, str(rel_path.name)):
-                            self.logger.warning(f"Skipping new path '{rel_path.name}' that does not match module's collection format '{self.config.ue.collection_matcher}'")
+                            self.logger.warning(f"Skipping new path '{rel_path.name}' (isdir: {file_path.is_dir()}) that does not match module's collection format '{self.config.ue.collection_matcher}'")
                             continue
                         self.logger.debug(f"Detected file or directory: {rel_path}")
                         asyncio.create_task(self.manage_create(rel_path, file_path))

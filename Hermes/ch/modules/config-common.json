@@ -1,6 +1,6 @@
 {
-  "instance": "xanadu",
   "target_environment": "dev",
+  "instance": "jb_testing",
   "metadata": {
     "template_file": "metadata_template.jsont",
     "parser": "jinja2",
@@ -8,7 +8,7 @@
   },
   "ue": {
     "media_watch_dir": "input",
-    "collection_matcher" : "^(?:[+-]?\\d+|melpomene|calliope|thalia|euterpe|terpsicore|erato|kira)$\n",
+    "collection_matcher" : "^(?:\\d+|melpomene|calliope|thalia|euterpe|terpsicore|erato|kira)$",
     "upload_on_modified": true
   },
   "s3": {
@@ -16,10 +16,11 @@
     "output_bucket": "dev-xanadu-postprocess"
   },
   "sqs": {
-    "notify_url": "https://sqs.us-west-2.amazonaws.com/976618892613/dev-xanadu"
+    "notify_queue_name": "dev-xanadu",
+    "listen_queue_name": "dev-xanadu-hermes-ch-jb_testing"
   },
   "sns": {
-    "monitor_arn": "arn:aws:sns:us-west-2:976618892613:dev-xanadu"
+    "listen_topic_arn": "arn:aws:sns:us-west-2:976618892613:dev-xanadu"
   },
   "firebase": {
     "notify_key": "/xanadu/ch/notify"
