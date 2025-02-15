@@ -17,21 +17,6 @@ def to_namespace(d):
     return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
 import boto3
 
-## config_common_file :  Common configuration file (optional), which can be overridden
-## config file:  module-specific config
-## output-dir:  while to put stuff
-from enum import StrEnum
-
-
-class State(StrEnum):
-    INITIALIZED = "INTALIZED: Initialized"
-    WATCHING = "WATCHING: Watching for input files"
-    FILES_PARTIAL = "FILES_PARTIAL: Some files detected"
-    FILES_ALL = "FILES_ALL: All files detected"
-    UPLOAD_IN_PROGRESS = "UPLOAD_IN_PROGRESS: Upload in progress"
-    COMPLETE = "COMPLETE: Files uploaded"
-    UPLOAD_ERROR = "UPLOAD_ERROR: Error uploading"
-
 import random, string
 class UploadableCollection:
 
@@ -42,16 +27,17 @@ class UploadableCollection:
         self.module = module
         self.path = file_path
         self.rel_path = rel_path
-        if metadatawriter is None:
-            self.metadatawriter = self.simplemetadatawriter
-        else:
-            self.metadatawriter = metadatawriter
-        #self.metadatawriter = self.simplemetadatawriter
-        self.state = State.INITIALIZED
         self.name = f"{file_path} => "
         self.files = {}
         self.metadata_file = None
         self.notifier = notifier
+
+        if metadatawriter is None:
+            self.metadatawriter = self.simplemetadatawriter
+        else:
+            self.metadatawriter = metadatawriter
+
+        # Load file data and then set up actions
         self.import_module()
         if file_actions is not None:
             if type(file_actions) is list:
@@ -78,10 +64,8 @@ class UploadableCollection:
 
     def import_module(self):
         self.gen_unique_s3_prefix()
+        # Metadata handle specially as it will be built after we have all the files
         self.metadata_file_for_notify = f'{self.s3_unique_prefix}-{self.module.dynamic.metadata_file}'
-        # self.files[ self.module.dynamic.metadata_file ] = dict(path=self.path / Path(self.module.dynamic.metadata_file),
-        #                                                        s3_unique_name=self.metadata_file_for_notify,
-        #                                                        mimetype="application/json", have=False, uploaded=False, filetype="meta")
         self.metadata_file = dict(path=self.path / Path(self.module.dynamic.metadata_file),
                                                              s3_unique_name=self.metadata_file_for_notify,
                                                              mimetype="application/json", have=False, uploaded=False,
@@ -123,7 +107,7 @@ class UploadableCollection:
         if not self.ready_to_upload() or self.all_uploaded():
             return
         self.logger.info(f"Ready to upload {self.name}, calling metadatawriter for {self.metadata_file['path']}")
-        try:
+        try:  # Write the metadata
             if self.metadatawriter:
                 metadata = self.metadatawriter(self.metadata_file, self.files)
                 with open(self.metadata_file['path'] , "w") as file:
@@ -149,12 +133,10 @@ class UploadableCollection:
         file_path = Path(file_path)
         filename = file_path.name  # os.path.basename(file_path)
         self.logger.info(f"Uploading {filename} to bucket {self.s3_bucket}...")
-        # return
         try:
             await asyncio.to_thread(self.s3.upload_file, file_path, self.s3_bucket, key)#filename)
             self.logger.info(f"Uploaded {filename} to {key} successfully.")
             #del pending_uploads[file_path]
-
             ## TODO Here? Plus array
             if self.all_uploaded():
                 notifier.notify(self.media_files_for_notify, self.metadata_file_for_notify)
@@ -176,7 +158,6 @@ class UploadableCollection:
             return [self.make_json_serializable(item) for item in data]
         else:
             return data  # Leave other types unchanged
-
 
     def simplemetadatawriter(self, metadata_file, media_files):
         self.logger.info(f"Using default metadatawriter")

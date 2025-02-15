@@ -1,37 +1,31 @@
-import json
 import jinja2
 from types import SimpleNamespace
 import tempfile
 import os
 import logging
 from pathlib import Path
+import json
+import re
 from jsonmerge import merge
 from pprint import pprint
 import time
-import re
 import asyncio
 from watchfiles import awatch, Change
 from hermes.utils import jformat
 from pprint import pprint
-def to_namespace(d):
-    return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
 import boto3
 from datetime import datetime
-TIME_STRING_FORMAT = "%Y-%m-%dT%H:%M:%S"
-
+import subprocess
 import mimetypes
 mimetypes.add_type("image/x-exr", ".exr")
-
-import subprocess
-
-## config_common_file :  Common configuration file (optional), which can be overridden
-## config file:  module-specific config
-## output-dir:  while to put stuff
-
 from hermes.ch.collection import UploadableCollection
 from hermes.ch.aws import SQSNotifier
+def to_namespace(d):
+    return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
 
+TIME_STRING_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
+## output-dir:  while to put stuff
 
 ## GenAIModuleRemote implements the logic to gather files and upload them to a remote AI processing module
 ## Right now, a few things, like EXR => PNG conversion when needed, are baked in
@@ -45,7 +39,7 @@ class GenAIModuleRemote:
 
     def __init__(self, s3, sqs, sns, config_file: str, config_common_file: str = None, base_dir = '.', logger=None):
         self.logger = logger or logging.getLogger(__name__)
-        # we do this here so we could control credentials here
+        # Get AWS clients from above so we don't have to control credentials here
         self.s3 = s3
         self.sqs = sqs
         self.sns = sns
@@ -58,6 +52,11 @@ class GenAIModuleRemote:
         self.uploadable_collections = {}
         self.dynamic_vars = {}  # dict version
         self.dynamic = None # Becomes simplenamespace of dynamic_vars
+
+        # Read config files
+        ## config_common_file :  Common configuration file across all modules(optional), which can be overridden
+        ## config file:  module-specific config
+        ##
         if  self.config_common_file is not None:
             try:
                 with open(self.config_common_file) as f:
@@ -78,8 +77,7 @@ class GenAIModuleRemote:
         self.config = to_namespace(self._config_dict)
         self.output_dir = self.base_dir / Path(self.config.metadata.output_dir)
 
-        ## Setup notifier and callback
-
+        ## Setup SQS Listener callback for end of inference
         self.listen_callback = lambda m : self.logger.info(f"Module {self.config.module} callback received message: \n{jformat(json.loads(m))}")
         self.notifier = SQSNotifier(self.sqs, self.sns, self.config.sqs.notify_queue_name,
                                     self.config.sqs.listen_queue_name, self.config.sns.listen_topic_arn,
@@ -201,18 +199,13 @@ class GenAIModuleRemote:
                 return
         except Exception as e:
             self.logger.error("Exception in manage_create {e} ", exc_info=True)
+
     async def manage_delete(self, rel_path: Path, file_path: Path) -> None:
         self.logger.debug(f"manage_delete {rel_path} {file_path}")
         if rel_path in self.uploadable_collections:
             self.logger.warn(f"Removing UploadableCollection '{rel_path}'")
             del self.uploadable_collections[rel_path]
 
-
-        # self.state = State.UPLOADING
-        # # for all media
-        # self.upload_to_s3(file_path)
-        #
-        # self.state = State.UPLOADING
 
     async def watch_directory(self) -> None:
         """Watch the directory for new files and upload them."""
@@ -246,74 +239,3 @@ class GenAIModuleRemote:
                         asyncio.create_task(self.manage_create(rel_path, file_path))
                 elif change == Change.deleted:
                     asyncio.create_task(self.manage_delete(rel_path, file_path))
-
-if __name__ == "__main__":
-    config_common = {
-        "description": "a module",
-        "extra" : "extra"
-    }
-    config_data = {
-        "module": "",
-        "description": "more specific description",
-        "instance": "instance_value",
-        "target_environment": "prod",
-        "pipeline": "",
-        "candidates_to_generate": "",
-        "metadata_template_file": "",
-        "metadata": {
-            "template_file": "metadata_template.json",
-            "parser": "jinja2",
-            "output_dir": "output"
-        },
-        "ue": {"media_watch_dir": ""},
-        "firebase": {"notify_key": ""},
-        "s3": {
-            "input_bucket": "input-bucket-value",
-            "output_bucket": "output-bucket-value"
-        },
-        "sqs": {"notify_url": ""},
-        "start_phase": ""
-    }
-    template_data = {
-        "media_file": "{{media_file}}",
-        "metadata_file": "{{metadata_file}}",
-        "input_bucket": "{{config.s3.input_bucket}}",
-        "output_bucket": "{{config.s3.output_bucket}}",
-        "instance": "{{config.instance}}",
-        "target_environment": "{{config.target_environment}}",
-        "user": "{{user}}",
-        "group": "{{group}}",
-        "tags": "{{tags}}",
-        "mimetype": "{{mimetype}}",
-        "timestamp": "{{timestamp}}"
-    }
-    with tempfile.NamedTemporaryFile("w+", delete=False) as common_file:
-        json.dump(config_common, common_file)
-        common_file.flush()
-        common_path = common_file.name
-    with tempfile.NamedTemporaryFile("w+", delete=False) as config_file:
-        json.dump(config_data, config_file)
-        config_file.flush()
-        config_path = config_file.name
-    with tempfile.NamedTemporaryFile("w+", delete=False) as tmpl_file:
-        json.dump(template_data, tmpl_file)
-        tmpl_file.flush()
-        template_path = tmpl_file.name
-    processor = GenAIModuleRemote(config_path, config_common_file = common_path)
-    processor.logger.setLevel(logging.INFO)
-    extra_vars = {
-        "media_file": "media.mp4",
-        "metadata_file": "meta.json",
-        "user": "alice",
-        "group": "users",
-        "tags": ["tag1", "tag2"],
-        "mimetype": "video/mp4",
-        "timestamp": "2025-01-31T12:00:00"
-    }
-    processor.load_dynamic(extra_vars)
-    output = processor.render_template(template_path)
-    pprint(processor.config)
-    print(json.dumps(output, indent=2))
-    os.remove(config_path)
-    os.remove(common_path)
-    os.remove(template_path)
