@@ -38,7 +38,6 @@ class GenAIModuleRemote:
     # to override for writing a specific metadata, pass overrides into metadata  template
 
     def __init__(self, s3, sqs, sns, config_file: str, config_common_file: str = None, base_dir = '.', logger=None):
-        self.logger = logger or logging.getLogger(__name__)
         # Get AWS clients from above so we don't have to control credentials here
         self.s3 = s3
         self.sqs = sqs
@@ -63,7 +62,7 @@ class GenAIModuleRemote:
                     config_str = f.read()
                 self._config_dict = json.loads(config_str)
             except json.JSONDecodeError as e:
-                self.logger.error("Invalid JSON in config file '%s': %s", self.config_file, e)
+                self.logger.error(f"GenAIModuleRemote: Invalid JSON in config file {self.config_file} - {e}")
                 raise
         else:
             self._config_dict = {}
@@ -72,20 +71,75 @@ class GenAIModuleRemote:
                 config_str = f.read()
             self._config_dict = merge(self._config_dict, json.loads(config_str))
         except json.JSONDecodeError as e:
-            self.logger.error("Invalid JSON in config file '%s': %s", self.config_file, e)
+            self.logger.error(f"GenAIModuleRemote: Invalid JSON in config file {self.config_file} - {e}")
             raise
         self.config = to_namespace(self._config_dict)
+
+        # Now that we've loaded the name, set up logger
+        self.name = self.config.module
+        class PrefixAdapter(logging.LoggerAdapter):
+            def process(self, msg, kwargs):
+                module = self.extra.get("module", "")
+                return f"{module}: {msg}", kwargs
+        self.logger = PrefixAdapter(logger or logging.getLogger(__name__), {"module":self.name})
+        
         self.output_dir = self.base_dir / Path(self.config.metadata.output_dir)
+        self.watch_dir = None  # filled in when watching
 
         ## Setup SQS Listener callback for end of inference
-        self.listen_callback = lambda m : self.logger.info(f"Module {self.config.module} callback received message: \n{jformat(json.loads(m))}")
         self.notifier = SQSNotifier(self.sqs, self.sns, self.config.sqs.notify_queue_name,
                                     self.config.sqs.listen_queue_name, self.config.sns.listen_topic_arn,
                                     self.listen_callback,
                                     self.config.s3.input_bucket, self.config.pipeline.name, self.config.module,
                                     self.config.pipeline.start_phase, self.logger)
 
+    # File downloading
+    #
+    def listen_callback(self, m):
+        msg = json.loads(m)
+        msg["next_metadata"] = json.loads(msg["next_metadata"])
+        if msg.get("phase") != "postprocess":   # download after the postprocess phase is complete
+            return
+        self.logger.info(f"{self.name} callback received message: \n{jformat(msg)}")
 
+        #TODO: Template this?
+        #Directory structure is instance/module/output/ and we write group/user/trial/
+        try:
+            output_dir = self.output_dir / msg["next_metadata"]["group"] / msg["next_metadata"]["user"] / msg["next_metadata"]["trial"]
+        except Exception as e:
+            output_dir = self.output_dir / "error"
+            self.logger.error(f"Error constructing output path, using {output_dir}")
+        try:
+            self.logger.debug(f"creating if necessary {output_dir}")
+            os.makedirs(output_dir, exist_ok=True)
+        except Exception as e:
+            self.logger.error(f"Error creating directory '{output_dir}': {e}", exc_info=True)
+
+        new_loop = asyncio.new_event_loop()
+        tasks = list()
+        arns = list(msg.get("media_arns").values())
+        arns.append(msg.get("metadata_arn"))
+        for arn in arns:  # ToDo: name collision possibility, at least theoretically
+            try:
+                resource = arn.split(":", 5)[-1]
+                bucket, key = resource.split('/', 1)
+            except Exception as e:
+                raise ValueError(f"Invalid S3 ARN: {arn}") from e
+            file_path = Path(key)
+            tasks.append(new_loop.create_task(self.download_from_s3(bucket, key, output_dir/file_path.name)))
+
+        new_loop.run_until_complete(asyncio.gather(*tasks))
+        new_loop.close()
+
+    async def download_from_s3(self, bucket, key, file_path: Path, notifier = None) -> None:
+        file_path = Path(file_path)
+        filename = file_path.name  # os.path.basename(file_path)
+        self.logger.debug(f"Downloading {key} from bucket {bucket} to {file_path} ...")
+        try:
+            await asyncio.to_thread(self.s3.download_file, bucket, key, file_path)
+            self.logger.info(f"Downloaded {key} from bucket {bucket} to {file_path} successfully.")
+        except Exception as err:
+            self.logger.error(f"Error downloading {key} from bucket {bucket} to {file_path}: {err}", exc_info=True)
 
     def load_dynamic(self, dynamic_vars: dict, merge=False):
         if merge:
@@ -105,7 +159,7 @@ class GenAIModuleRemote:
             rendered = template.render(context)
             return json.loads(rendered)
         except json.JSONDecodeError as e:
-            self.logger.error("Error decoding JSON from rendered template '%s': %s", template_path, e)
+            self.logger.error(f"Error decoding JSON from rendered template {template_path}: {e}")
             raise
 
 
@@ -184,12 +238,14 @@ class GenAIModuleRemote:
     async def watch_directory(self) -> None:
         """Watch the directory for new files and upload them."""
         watch_path = Path(self.base_dir / self.config.ue.media_watch_dir)
-        self.logger.info(f"Module {self.config.module} watching {watch_path}")
+        self.watch_path = watch_path
+        self.logger.info(f"Watching {self.watch_path}, with output dir {self.output_dir}")
         debounce_list = {}
         collection_matcher = re.compile(self.config.ue.collection_matcher)   # filter new directories based on regexp
 
         monitor_task = asyncio.create_task(asyncio.to_thread(self.notifier.monitor))
 
+        self.loop = asyncio.get_running_loop()
         async for changes in awatch(watch_path):
             for change, file_path in changes:
                 file_path = Path(file_path)

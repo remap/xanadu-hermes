@@ -76,7 +76,7 @@ class SQSNotifier:
             self.logger.debug("Queue purged successfully.")
         except Exception as error:
             # This will catch errors like if you try to purge within 60 seconds of a previous purge
-            self.logger.error(f"Error purging queue {self.listen_queue_url}:", error)
+            self.logger.error(f"Error purging queue {self.listen_queue_url}: %s", error)
 
         # Get the corresponding ARN
         try:
@@ -85,7 +85,7 @@ class SQSNotifier:
                 AttributeNames=["QueueArn"]
             )["Attributes"]["QueueArn"]
         except Exception as error:
-            self.logger.error("SQS Listen Error getting listen queue arn:", error)
+            self.logger.error("SQS Listen Error getting listen queue arn: %s", error)
             self.listen_queue_arn = None
 
 

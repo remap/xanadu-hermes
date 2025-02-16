@@ -51,7 +51,7 @@ if __name__ == "__main__":
                         remotes[remote.config.module] = remote
                         logger.info(f"Loaded config for module '{remote.config.module}' from {config_file}")
                     except Exception as e:
-                        logger.error(f"Failed to load module config for module '{remote.config.module}': {e}",
+                        logger.error(f"Failed to load module config for module: {e}",
                                      exc_info=True)
                 else:
                     logger.warning(f"No config.json found in {subpath}")
@@ -59,8 +59,10 @@ if __name__ == "__main__":
 
 
     ## Config data is configured per module
-    remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config="ch/modules/config-common.json",
-                                  module_dir="ch/modules", module_config_filename="config.json")
+    instance = "jb_testing"
+    logger.info(f"Hermes Ch Instance: {instance}")
+    remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/modules/{instance}/config-common.json",
+                                  module_dir=f"ch/modules/{instance}", module_config_filename="config.json")
 
     ## Dynamic data is created at run-time during the show
     ## It is what is watched for.
@@ -96,7 +98,7 @@ if __name__ == "__main__":
         # print (jformat(metadata_rendered))
         # print(remote.write_template())
 
-    logger.info("Running async watchers...")
+    #logger.info("Running async watchers...")
     async def watch():
         tasks = [remote.watch_directory() for remote in remotes.values()]
         await asyncio.gather(*tasks)

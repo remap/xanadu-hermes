@@ -129,7 +129,7 @@ class UploadableCollection:
         else:
             self.logger.debug(f'Skipping upload already done for {self.metadata_file["path"]}')
 
-    async def upload_to_s3(self, file_path: Path, key, notifier) -> None:
+    async def upload_to_s3(self, file_path: Path, key, notifier = None) -> None:
         file_path = Path(file_path)
         filename = file_path.name  # os.path.basename(file_path)
         self.logger.info(f"Uploading {filename} to bucket {self.s3_bucket}...")
@@ -139,7 +139,8 @@ class UploadableCollection:
             #del pending_uploads[file_path]
             ## TODO Here? Plus array
             if self.all_uploaded():
-                notifier.notify(self.media_files_for_notify, self.metadata_file_for_notify)
+                if notifier is not None:
+                    notifier.notify(self.media_files_for_notify, self.metadata_file_for_notify)
                 self.reset_counters()
 
             return True

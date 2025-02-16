@@ -5,6 +5,7 @@
     "output_bucket": "{{config.s3.output_bucket}}",
     "instance": "{{config.instance}}",
     "target_environment":  "{{config.target_environment}}",
+    "module": "{{config.module}}",
     "trial": "{{p[-1]}}",
     "user": "{{p[-2]}}",
     "group": " {{p[-3]}}",
