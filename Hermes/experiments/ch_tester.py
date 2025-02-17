@@ -17,11 +17,11 @@ groups = ["melpomene",
 users = 1
 trials = 1
 
-
-
-groups = ["melpomene"]
-modules = ["ch3",]
-users = 1
+#
+#
+# groups = ["melpomene"]
+# modules = ["ch3",]
+# users = 1
 
 
 
@@ -37,8 +37,8 @@ input_subdir = "input"
 output_subdir = "output"
 
 
-create = True
-check = True
+#create = True
+#check = True
 wait_sec = 5
 
 # Prep dirs
