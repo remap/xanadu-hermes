@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'melpomene-4587-4313-Cu1NXTJCJhE4-media.png', 'mimetype': 'image/png'}, {'name': 'melpomene-4587-4313-Cu1NXTJCJhE4-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "melpomene-4587-4313-Cu1NXTJCJhE4-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch2",
+    "trial": "4313",
+    "user": "4587",
+    "group": "melpomene",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

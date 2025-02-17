@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'erato-9763-7418-5leOnc3WVM0s-media.png', 'mimetype': 'image/png'}, {'name': 'erato-9763-7418-5leOnc3WVM0s-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "erato-9763-7418-5leOnc3WVM0s-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch1",
+    "trial": "7418",
+    "user": "9763",
+    "group": "erato",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'kira-1770-8995-DUilcoLQ7Ubk-media.png', 'mimetype': 'image/png'}, {'name': 'kira-1770-8995-DUilcoLQ7Ubk-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "kira-1770-8995-DUilcoLQ7Ubk-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch4",
+    "trial": "8995",
+    "user": "1770",
+    "group": "kira",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

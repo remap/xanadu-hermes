@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'thalia-1166-8419-qW5K0eO0yCHa-media.png', 'mimetype': 'image/png'}, {'name': 'thalia-1166-8419-qW5K0eO0yCHa-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "thalia-1166-8419-qW5K0eO0yCHa-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch4",
+    "trial": "8419",
+    "user": "1166",
+    "group": "thalia",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

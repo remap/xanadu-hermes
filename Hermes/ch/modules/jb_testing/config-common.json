@@ -10,7 +10,8 @@
     "media_watch_dir": "input",
     "output_dir" : "output",
     "collection_matcher" : "^(?:\\d+|melpomene|calliope|thalia|euterpe|terpsicore|erato|kira)$",
-    "upload_on_modified": true
+    "upload_on_modified": true,
+    "require_depth" : 3
   },
   "s3": {
     "input_bucket": "dev-xanadu-raw-input",

@@ -104,7 +104,7 @@ class SQSListener:
                         #self.listen_callback(payload)
                         for key, callback in self.listen_callbacks.items():
                             try:
-                                callback(payload)
+                                callback(json.loads(payload))
                             except Exception as e:
                                 self.logger.error(f"Exception in SQS Notify listen_callback with key {key}: {e}", exc_info=True)
                     except Exception as e:

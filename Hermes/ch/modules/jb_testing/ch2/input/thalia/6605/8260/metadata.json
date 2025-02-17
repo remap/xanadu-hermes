@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'thalia-6605-8260-gqjBahhI8Lva-media.png', 'mimetype': 'image/png'}, {'name': 'thalia-6605-8260-gqjBahhI8Lva-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "thalia-6605-8260-gqjBahhI8Lva-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch2",
+    "trial": "8260",
+    "user": "6605",
+    "group": "thalia",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

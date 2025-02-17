@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'euterpe-9228-2016-wT86uxkRzrxS-media.png', 'mimetype': 'image/png'}, {'name': 'euterpe-9228-2016-wT86uxkRzrxS-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "euterpe-9228-2016-wT86uxkRzrxS-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch2",
+    "trial": "2016",
+    "user": "9228",
+    "group": "euterpe",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

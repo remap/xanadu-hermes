@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'erato-7471-2640-gcpTrBAuc0cW-media.png', 'mimetype': 'image/png'}, {'name': 'erato-7471-2640-gcpTrBAuc0cW-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "erato-7471-2640-gcpTrBAuc0cW-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch2",
+    "trial": "2640",
+    "user": "7471",
+    "group": "erato",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

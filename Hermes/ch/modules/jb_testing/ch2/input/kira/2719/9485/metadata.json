@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'kira-2719-9485-yVCWT9oc9ARj-media.png', 'mimetype': 'image/png'}, {'name': 'kira-2719-9485-yVCWT9oc9ARj-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "kira-2719-9485-yVCWT9oc9ARj-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch2",
+    "trial": "9485",
+    "user": "2719",
+    "group": "kira",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

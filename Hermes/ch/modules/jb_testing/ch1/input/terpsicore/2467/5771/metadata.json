@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'terpsicore-2467-5771-fQ4q59dB6m7p-media.png', 'mimetype': 'image/png'}, {'name': 'terpsicore-2467-5771-fQ4q59dB6m7p-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "terpsicore-2467-5771-fQ4q59dB6m7p-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch1",
+    "trial": "5771",
+    "user": "2467",
+    "group": "terpsicore",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

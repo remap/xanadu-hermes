@@ -1,0 +1,15 @@
+{
+    "media_file": "[{'name': 'terpsicore-7095-3940-RUzUpGsPpiBb-media.png', 'mimetype': 'image/png'}, {'name': 'terpsicore-7095-3940-RUzUpGsPpiBb-media.exr', 'mimetype': 'image/x-exr'}]",
+    "metadata_file": "terpsicore-7095-3940-RUzUpGsPpiBb-metadata.json",
+    "input_bucket": "dev-xanadu-raw-input",
+    "output_bucket": "dev-xanadu-postprocess",
+    "instance": "jb_testing",
+    "target_environment": "dev",
+    "module": "ch4",
+    "trial": "3940",
+    "user": "7095",
+    "group": "terpsicore",
+    "tags": "['tag1', 'tag2']",
+    "mimetype": "",
+    "timestamp": "2025-02-17T12:13:22"
+}

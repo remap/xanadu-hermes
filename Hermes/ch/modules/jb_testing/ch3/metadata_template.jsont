@@ -8,7 +8,7 @@
     "module": "{{config.module}}",
     "trial": "{{p[-1]}}",
     "user": "{{p[-2]}}",
-    "group": " {{p[-3]}}",
+    "group": "{{p[-3]}}",
     "tags": "{{tags}}",
     "mimetype": "{{mimetype}}",
     "timestamp": "{{timestamp}}"

@@ -18,11 +18,11 @@ users = 1
 trials = 1
 
 
-#
-# groups = ["melpomene"]
-# modules = ["ch1",]
-# users = 1
-#
+
+groups = ["melpomene"]
+modules = ["ch3",]
+users = 1
+
 
 
 

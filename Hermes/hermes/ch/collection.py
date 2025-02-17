@@ -16,8 +16,17 @@ from pprint import pprint
 def to_namespace(d):
     return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
 import boto3
-
+import pathlib
+from datetime import datetime
 import random, string
+import jsonpickle
+class PosixPathHandler(jsonpickle.handlers.BaseHandler):
+    def flatten(self, obj, data):
+        return str(obj)
+jsonpickle.handlers.register(pathlib.PosixPath, PosixPathHandler)
+
+TIME_STRING_FORMAT = "%Y-%m-%dT%H:%M:%S"
+
 class UploadableCollection:
 
     def __init__(self, s3, module: "GenAIModuleRemote", file_path : Path,  rel_path : Path, metadatawriter=None, file_actions=None, logger=None, notifier=None, loadExisting=False):
@@ -31,6 +40,8 @@ class UploadableCollection:
         self.files = {}
         self.metadata_file = None
         self.notifier = notifier
+        self.last_upload_time = None
+        self.upload_count = 0
 
         if metadatawriter is None:
             self.metadatawriter = self.simplemetadatawriter
@@ -57,6 +68,21 @@ class UploadableCollection:
                     logging.warning(f'Collection {self.name} loading existing {item}')
                     self.check_new_file(item)
             self.upload_if_ready()
+
+
+    def to_summary(self):
+        s = {}
+        #s["name"] = self.name
+        s["rel_path"] = self.rel_path
+        s["s3_unique_prefix"] = self.s3_unique_prefix
+        s["last_upload_time"] = self.last_upload_time
+        s["upload_count"] = self.upload_count
+        s["metadata_file"] = self.metadata_file
+        s["media_files"] = self.files
+        return s
+
+    def to_json(self):
+        return jsonpickle.encode(self.to_summary(), unpicklable=False)
 
     def gen_unique_s3_prefix(self):
         self.s3_unique_prefix = str(self.rel_path).replace(os.sep, "-") + "-" + self.generate_random_string()
@@ -111,6 +137,7 @@ class UploadableCollection:
         if not self.ready_to_upload() or self.all_uploaded() or self.all_uploading():
             return
         self.logger.info(f"Ready to upload {self.name}, calling metadatawriter for {self.metadata_file['path']}")
+        #print (self.to_json_str())
         try:  # Write the metadata
             if self.metadatawriter:
                 metadata = self.metadatawriter(self.metadata_file, self.files)
@@ -149,6 +176,8 @@ class UploadableCollection:
             if self.all_uploaded():
                 if notifier is not None:
                     notifier.notify(self.media_files_for_notify, self.metadata_file_for_notify)
+                self.last_upload_time = datetime.now().strftime(TIME_STRING_FORMAT)
+                self.upload_count += 1
                 self.reset_counters()
 
             return True

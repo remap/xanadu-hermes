@@ -4,6 +4,7 @@ import tempfile
 import os
 import logging
 from pathlib import Path
+import pathlib
 import json
 import re
 from jsonmerge import merge
@@ -22,13 +23,42 @@ mimetypes.add_type("image/x-exr", ".exr")
 from hermes.ch.collection import UploadableCollection
 from hermes.ch.aws import SQSNotifier, SQSListener
 
+import jsonpickle
+
+
+class PosixPathHandler(jsonpickle.handlers.BaseHandler):
+    def flatten(self, obj, data):
+        return str(obj)
+
+
+jsonpickle.handlers.register(pathlib.PosixPath, PosixPathHandler)
+
+
+# class UploadableCollectionHandler(jsonpickle.handlers.BaseHandler):
+#     def flatten(self, obj, data):
+#         return obj.to_summary()
+# jsonpickle.handlers.register(UploadableCollection, UploadableCollectionHandler)
+#
 
 def to_namespace(d):
     return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
 
 
 TIME_STRING_FORMAT = "%Y-%m-%dT%H:%M:%S"
+log_file_watch_detail = False
 
+uc_status_init = {
+    "phase": "initialized",
+    "last_notify": "",
+    "failure": False,
+    "msg_detail": "",
+    "outputs" : []
+}
+
+
+## REFACTOR STATUS TO SIT INSIDE THE UPLOADABLE COLLECITON
+## and add other states
+##
 
 ## output-dir:  while to put stuff
 
@@ -38,7 +68,6 @@ TIME_STRING_FORMAT = "%Y-%m-%dT%H:%M:%S"
 ##
 
 class GenAIModuleRemote:
-
     # self.config and self.dynamic are module-wide vars
     # to override for writing a specific metadata, pass overrides into metadata  template
 
@@ -57,6 +86,7 @@ class GenAIModuleRemote:
         self.config_common_file = Path(config_common_file)
         self.DEBOUNCE_SEC = 1
         self.uploadable_collections = {}
+        self.uploadable_collections_status = {}
         self.dynamic_vars = {}  # dict version
         self.dynamic = None  # Becomes simplenamespace of dynamic_vars
 
@@ -104,23 +134,65 @@ class GenAIModuleRemote:
         ## Listen for incoming events.
         if GenAIModuleRemote.listener is None:
             GenAIModuleRemote.listener = SQSListener(self.sqs, self.sns, self.config.sqs.listen_queue_name,
-                                        self.config.sns.listen_topic_arn, self.logger)
+                                                     self.config.sns.listen_topic_arn, self.logger)
 
-        GenAIModuleRemote.listener.add_callback(self.name,self.listen_callback)
+        GenAIModuleRemote.listener.add_callback(self.name, self.listen_callback)
+
+    def to_summary(self):
+        s = {}
+        s["name"] = self.name
+        uc = {}
+        # TODO: Refactor status
+        for key, value in self.uploadable_collections.items():
+            uc[str(key)] = value.to_summary()
+            uc[str(key)].update(
+                self.uploadable_collections_status[key])  # Key is posix path but we use string in outgoing summary
+        s["uploadable_collections"] = uc
+        return s
+
+    def to_json(self):
+        return jsonpickle.encode(self.to_summary(), unpicklable=False)
+
+    # TODO: refactor to use a specific unique identifier
+    #
+    def get_unique_id(self, m):
+        arn = m["metadata_arn"]
+        f = arn.split("/")[-1]
+        p = f.replace("-metadata.json", "")
+        return p
+
+    def get_collection_key(self, p):
+        c = self.get_unique_id(p)
+        return Path("/".join(c.split("-")[:3]))  # key is posix path
 
     # File downloading
     #
-    def listen_callback(self, m):
-        msg = json.loads(m)
-        if msg.get("module","") != self.config.module:  # TODO: Let die silently?
+    def listen_callback(self, msg):
+
+        if msg.get("module", "") != self.config.module:  # TODO: Let die silently?
             return
-        if msg.get("status","") == "failure":
-            self.logger.error(f"Failure: \n{msg.get('error_code')} {msg.get('error_message')}\n {msg.get('exceptions')} \n{msg}")
+        try:
+            key = self.get_collection_key(msg)
+        except Exception as e:
+            key = ""
+        if key in self.uploadable_collections_status:
+            t = datetime.now().strftime(TIME_STRING_FORMAT)
+            # print(f"*** updating {key} with {t}")
+            self.uploadable_collections_status[key]["last_notify"] = t
+            self.uploadable_collections_status[key]["msg_detail"] = msg
+            self.uploadable_collections_status[key]["phase"] = msg.get("phase")
+        if msg.get("status", "") == "failure":
+            s = f"Failure: \n{msg.get('error_code')} {msg.get('error_message')}\n {msg.get('exceptions')} \n{msg}"
+            self.logger.error(s)
+            if key in self.uploadable_collections_status:
+                self.uploadable_collections_status[key]["failure"] = True
             return
-        if "next_metadata"  not in msg:
+        if "next_metadata" not in msg:
             self.logger.error(f"Incoming message had no next_metadata: {msg}")
             return
         msg["next_metadata"] = json.loads(msg["next_metadata"])
+        # If Postprocess, download the file
+        #
         if msg.get("phase") != "postprocess":  # download after the postprocess phase is complete
             return
         self.logger.info(f"{self.name} callback received postprocess message: \n{jformat(msg)}")
@@ -150,18 +222,20 @@ class GenAIModuleRemote:
             except Exception as e:
                 raise ValueError(f"Invalid S3 ARN: {arn}") from e
             file_path = Path(key)
-            tasks.append(new_loop.create_task(self.download_from_s3(bucket, key, output_dir / file_path.name)))
+            tasks.append(new_loop.create_task(self.download_from_s3(bucket, key, output_dir / file_path.name, collection_key)))
 
         new_loop.run_until_complete(asyncio.gather(*tasks))
         new_loop.close()
 
-    async def download_from_s3(self, bucket, key, file_path: Path, notifier=None) -> None:
+    async def download_from_s3(self, bucket, key, file_path: Path,collection_key, notifier=None) -> None:
         file_path = Path(file_path)
         filename = file_path.name  # os.path.basename(file_path)
         self.logger.debug(f"Downloading {key} from bucket {bucket} to {file_path} ...")
         try:
             await asyncio.to_thread(self.s3.download_file, bucket, key, file_path)
-            self.logger.info(f"Downloaded {key} from bucket {bucket} to {file_path} successfully.")
+            self.logger.info(f"Downloaded {key} from bucket {bucket} to {file_path.as_uri()} successfully.")
+
+            self.uploadable_collections_status[collection_key]["outputs"].append(file_path.as_uri())
         except Exception as err:
             self.logger.error(f"Error downloading {key} from bucket {bucket} to {file_path}: {err}", exc_info=True)
 
@@ -227,11 +301,10 @@ class GenAIModuleRemote:
     def path_ends_with(self, full_path: Path, ending: Path) -> bool:
         ending_parts = ending.parts
         full_parts = full_path.parts
-        #print(full_path,ending)
+        # print(full_path,ending)
         if len(ending_parts) > len(full_parts):
             return False
         return full_parts[-len(ending_parts):] == ending_parts
-
 
     async def manage_create(self, rel_path: Path, file_path: Path) -> None:
         try:
@@ -239,19 +312,32 @@ class GenAIModuleRemote:
                 if rel_path in self.uploadable_collections:
                     self.logger.warn(f"Skipping creation of UploadableCollection '{rel_path}', already seen")
                 else:
-                    self.logger.info(f"Creating UploadableCollection '{rel_path}'")
-                    self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path,
-                                                                                 self.metadatawriter, self.fileactions,
-                                                                                 self.logger, self.notifier)
+                    ## TODO: Fix - merge with logic below
+                    depth = len(rel_path.parts)
+                    if depth >= self.config.ue.require_depth:
+                        self.logger.info(f"Creating UploadableCollection '{rel_path}'")
+                        self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path,
+                                                                                     self.metadatawriter,
+                                                                                     self.fileactions,
+                                                                                     self.logger, self.notifier)
+                        self.uploadable_collections_status[rel_path] = uc_status_init.copy()
+                    else:
+                        pass  # silently ignore paths that aren't deep enough.
+
             if file_path.is_file():
                 if rel_path.parent not in self.uploadable_collections:
-                    self.logger.info(
-                        f"Creating UploadableCollection to receive file create '{rel_path.parent}', '{file_path.parent}'")
-                    self.uploadable_collections[rel_path.parent] = UploadableCollection(self.s3, self, file_path.parent,
-                                                                                        rel_path.parent,
-                                                                                        self.metadatawriter,
-                                                                                        self.fileactions, self.logger,
-                                                                                        self.notifier)
+                    depth = len(rel_path.parent.parts)  # look at directory
+                    if depth >= self.config.ue.require_depth:
+                        self.logger.info(
+                            f"Creating UploadableCollection to receive file create '{rel_path.parent}', '{file_path.parent}'")
+                        self.uploadable_collections[rel_path.parent] = UploadableCollection(self.s3, self,
+                                                                                            file_path.parent,
+                                                                                            rel_path.parent,
+                                                                                            self.metadatawriter,
+                                                                                            self.fileactions,
+                                                                                            self.logger,
+                                                                                            self.notifier)
+                        self.uploadable_collections_status[rel_path.parent] = uc_status_init.copy()
                 self.logger.debug(f"Checking if UploadableCollections need new file {file_path}")
                 for key, collection in self.uploadable_collections.items():
                     if self.path_ends_with(file_path.parent, key):
@@ -259,6 +345,7 @@ class GenAIModuleRemote:
                             self.logger.debug(f"Hit UploadableCollection {key}")
                             # if collection.ready_to_upload():
                             # self.logger.info(f"Ready to upload UploadableCollection {key}")
+                            self.uploadable_collections_status[key]["phase"]="uploading"
                             collection.upload_if_ready()
                 return
             else:
@@ -289,24 +376,24 @@ class GenAIModuleRemote:
             for change, file_path in changes:
                 file_path = Path(file_path)
                 rel_path = file_path.relative_to(watch_path.resolve())
-                self.logger.debug(f"Change: {change.name} {rel_path}")
+                if log_file_watch_detail: self.logger.debug(f"Change: {change.name} {rel_path}")
                 if change == Change.added or (self.config.ue.upload_on_modified and change == Change.modified):
                     if rel_path in debounce_list:
                         t = time.time() - debounce_list[rel_path]
                         if t < self.DEBOUNCE_SEC:
-                            self.logger.debug(
+                            if log_file_watch_detail: self.logger.debug(
                                 f"Debounce {t:0.3f} {rel_path}")  # required for things like echo foo > foo.txt
                         else:
                             del debounce_list[rel_path]
                             # self.logger.warning(f"Upload already in progress, re-upload not implemented.")
                     else:
-                        debounce_list[file_path] = time.time()
+                        debounce_list[rel_path] = time.time()
                         # Schedule the upload without awaiting (i.e. fire-and-forget)
                         if file_path.is_dir() and not re.fullmatch(collection_matcher, str(rel_path.name)):
-                            self.logger.warning(
+                            if log_file_watch_detail: self.logger.warning(
                                 f"Skipping new path '{rel_path.name}' (isdir: {file_path.is_dir()}) that does not match module's collection format '{self.config.ue.collection_matcher}'")
                             continue
-                        self.logger.debug(f"Detected file or directory: {rel_path}")
+                        if log_file_watch_detail: self.logger.debug(f"Detected file or directory: {rel_path}")
                         asyncio.create_task(self.manage_create(rel_path, file_path))
                 elif change == Change.deleted:
                     asyncio.create_task(self.manage_delete(rel_path, file_path))
