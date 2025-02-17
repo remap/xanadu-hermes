@@ -3,7 +3,10 @@
 import shutil, os
 from pathlib import Path
 import random
+import time
 
+instances = ["jb_testing"]
+modules = ["ch1", "ch2", "ch3", "ch4"]
 groups = ["melpomene",
       "calliope",
       "thalia",
@@ -11,17 +14,32 @@ groups = ["melpomene",
       "terpsicore",
       "erato",
       "kira"]
+users = 1
+trials = 1
 
-modules = ["ch1", "ch2", "ch3", "ch4"]
 
-instances = ["jb_testing"]
+#
+# groups = ["melpomene"]
+# modules = ["ch1",]
+# users = 1
+#
+
+
 
 root_dir = Path("/Users/jburke/Dropbox/eutamias-dev/xanadu/hermes/xanadu-hermes/Hermes/ch/modules/")
-media_file = Path("/Users/jburke/Dropbox/eutamias-dev/xanadu/hermes/xanadu-hermes/Hermes/ch/media.exr")
+#media_file = Path("/Users/jburke/Dropbox/eutamias-dev/xanadu/hermes/xanadu-hermes/Hermes/ch/media.exr")
+media_target_name = "media.exr"
+media_files = [
+    Path("/Users/jburke/Dropbox/eutamias-dev/xanadu/hermes/xanadu-hermes/Hermes/ch/test_image0.exr"),
+    Path("/Users/jburke/Dropbox/eutamias-dev/xanadu/hermes/xanadu-hermes/Hermes/ch/test_image1.exr"),
+]
 input_subdir = "input"
 output_subdir = "output"
-trials = 1
-users = 2
+
+
+create = True
+check = True
+wait_sec = 5
 
 # Prep dirs
 for instance in instances:
@@ -55,6 +73,7 @@ random.shuffle(groups)
 
 print(instances, modules, groups)
 
+outputs = []
 for instance in instances:
     for module in modules:
         for group in groups:
@@ -64,7 +83,19 @@ for instance in instances:
                 for n in range(trials):
                     trial = str(random.randrange(0, 10000))
 
-                    media_dir = root_dir / instance / module / input_subdir / group / user / trial
-                    print("makedirs", media_dir)
-                    os.makedirs(media_dir, exist_ok=True)
+                    if create:
+                        media_dir = root_dir / instance / module / input_subdir / group / user / trial
+                        print("makedirs", media_dir)
+                        os.makedirs(media_dir, exist_ok=True)
+                        media_file = random.choice(media_files)
+                        print("copy", media_file, media_dir / media_target_name)
+                        shutil.copy(media_file, media_dir / media_target_name)
 
+                    outputs.append( root_dir / instance / module / output_subdir / group / user / trial )
+
+if check:
+    while(True):
+        time.sleep(wait_sec)
+        print("---")
+        for output in outputs:
+            print(output, "-", list(output.glob("*.png")))

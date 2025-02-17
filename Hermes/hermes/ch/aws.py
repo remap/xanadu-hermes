@@ -1,39 +1,17 @@
 import json
 import boto3
 import asyncio
-class SQSNotifier:
 
-    def __init__(self, sqs, sns, notify_queue_name, listen_queue_name, listen_topic_arn, listen_callback,  bucket,  pipeline, module, start_phase, logger=None):
+
+
+class SQSListener:
+    def __init__(self, sqs, sns, listen_queue_name, listen_topic_arn, logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.sqs = sqs
         self.sns = sns
-        self.notify_queue_name = notify_queue_name
         self.listen_queue_name = listen_queue_name
         self.listen_topic_arn = listen_topic_arn
-        self.bucket = bucket
-        self.pipeline = pipeline
-        self.listen_callback = listen_callback
-        self.message_attributes = {
-            "module": {
-                "DataType": "String",
-                "StringValue": f"{module}"
-            },
-            "phase": {
-                "DataType": "String",
-                "StringValue": f"{start_phase}"
-            }
-        }
-
-        # notify_queue, used to tell lambda to process
-        # Only one, get it.
-        try:
-            response = sqs.get_queue_url(QueueName=self.notify_queue_name)
-            self.notify_queue_url = response["QueueUrl"]
-            self.logger.info(f"SQS Notify Queue: URL: {self.notify_queue_url}")
-        except Exception as error:
-            self.logger.error("SQS Notify Error getting notify queue url:", error)
-            self.notify_queue_url = None
-
+        self.listen_callbacks = {}
         # listen_queue, used for SNS subscriptions
         # Use one specific to our instance, create if needed
         #
@@ -88,7 +66,12 @@ class SQSNotifier:
             self.logger.error("SQS Listen Error getting listen queue arn: %s", error)
             self.listen_queue_arn = None
 
+    def add_callback(self, key, listen_callback):
+        self.listen_callbacks[key] = listen_callback
 
+    def remove_callback(self, key):
+        if key in self.listen_callbacks:
+            del self.listen_callbacks[key]
 
     def monitor(self):
 
@@ -118,7 +101,12 @@ class SQSNotifier:
                     payload =  json.loads(msg["Body"])["Message"]
                     self.logger.debug(f"SQS Notify Received message: {payload}")
                     try:
-                        self.listen_callback(payload)
+                        #self.listen_callback(payload)
+                        for key, callback in self.listen_callbacks.items():
+                            try:
+                                callback(payload)
+                            except Exception as e:
+                                self.logger.error(f"Exception in SQS Notify listen_callback with key {key}: {e}", exc_info=True)
                     except Exception as e:
                         self.logger.error("Exception in SQS Notify listen_callback", exc_info=True )
                     self.sqs.delete_message(
@@ -127,6 +115,37 @@ class SQSNotifier:
                     )
             except Exception as e:
                 self.logger.error("Error in SQS Notify monitor loop", exc_info=True)
+
+
+class SQSNotifier:
+
+    def __init__(self, sqs, sns, notify_queue_name, bucket,  pipeline, module, start_phase, logger=None):
+        self.logger = logger or logging.getLogger(__name__)
+        self.sqs = sqs
+        self.sns = sns
+        self.notify_queue_name = notify_queue_name
+        self.bucket = bucket
+        self.pipeline = pipeline
+        self.message_attributes = {
+            "module": {
+                "DataType": "String",
+                "StringValue": f"{module}"
+            },
+            "phase": {
+                "DataType": "String",
+                "StringValue": f"{start_phase}"
+            }
+        }
+
+        # notify_queue, used to tell lambda to process
+        # Only one, get it.
+        try:
+            response = sqs.get_queue_url(QueueName=self.notify_queue_name)
+            self.notify_queue_url = response["QueueUrl"]
+            self.logger.info(f"SQS Notify Queue: URL: {self.notify_queue_url}")
+        except Exception as error:
+            self.logger.error("SQS Notify Error getting notify queue url:", error)
+            self.notify_queue_url = None
 
     def notify(self, media_files, metadata_file):
         media_arns = {}

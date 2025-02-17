@@ -69,14 +69,14 @@ class UploadableCollection:
         self.metadata_file = dict(path=self.path / Path(self.module.dynamic.metadata_file),
                                                              s3_unique_name=self.metadata_file_for_notify,
                                                              mimetype="application/json", have=False, uploaded=False,
-                                                             filetype="meta")
+                                                             uploading=False, filetype="meta")
         self.media_files_for_notify = {}
         for file in self.module.dynamic.media_files:
             self.media_files_for_notify[ file["name"] ] = f'{self.s3_unique_prefix}-{file["name"]}'
             self.files[ file["name"] ] = dict(path=self.path / Path(file["name"]),
                                               s3_unique_name=f'{self.s3_unique_prefix}-{file["name"]}',
                                               mimetype=file["mimetype"],
-                                              have=False, uploaded=False, filetype="media")
+                                              have=False, uploaded=False, uploading=False, filetype="media")
         self.s3_bucket = self.module.config.s3.input_bucket
 
     def generate_random_string(self):
@@ -84,6 +84,9 @@ class UploadableCollection:
 
     def ready_to_upload(self):
         return all(x["have"] for x in self.files.values())
+
+    def all_uploading(self):
+        return all(x["uploading"] for x in self.files.values())
 
     def all_uploaded(self):
         return all(x["uploaded"] for x in self.files.values())
@@ -94,7 +97,7 @@ class UploadableCollection:
     def check_new_file(self, file_path):
         hit = False
         for file in self.files.values():
-            #print(file_path, file["path"], file_path==file["path"])
+            #print("check", file_path, file["path"], file_path==file["path"])
             if file_path==file["path"]:
                 file["have"] = True
                 if self.file_actions is not None:
@@ -104,7 +107,8 @@ class UploadableCollection:
         return False
 
     def upload_if_ready(self):
-        if not self.ready_to_upload() or self.all_uploaded():
+        # Todo : simplify state management
+        if not self.ready_to_upload() or self.all_uploaded() or self.all_uploading():
             return
         self.logger.info(f"Ready to upload {self.name}, calling metadatawriter for {self.metadata_file['path']}")
         try:  # Write the metadata
@@ -117,25 +121,29 @@ class UploadableCollection:
             self.logger.debug(f"Exception writing metadata", exc_info=True)
 
         for file_info in self.files.values():
-            if not file_info["uploaded"]:
-                asyncio.create_task(self.upload_to_s3(file_info["path"], file_info["s3_unique_name"], self.notifier))
-                file_info["uploaded"] = True
+            if not file_info["uploaded"] and not file_info["uploading"]:
+                asyncio.create_task(self.upload_to_s3(file_info, self.notifier))
+                file_info["uploading"] = True
             else:
                 self.logger.debug(f'Skipping upload already done for {file_info["path"]}')
 
-        if not self.metadata_file["uploaded"]:
-            asyncio.create_task(self.upload_to_s3(self.metadata_file["path"], self.metadata_file["s3_unique_name"], self.notifier))
-            self.metadata_file["uploaded"] = True
+        if not self.metadata_file["uploaded"] and not self.metadata_file["uploading"]:
+            asyncio.create_task(self.upload_to_s3(self.metadata_file, self.notifier))
+            self.metadata_file["uploading"] = True
         else:
             self.logger.debug(f'Skipping upload already done for {self.metadata_file["path"]}')
 
-    async def upload_to_s3(self, file_path: Path, key, notifier = None) -> None:
-        file_path = Path(file_path)
+    async def upload_to_s3(self, file_info, notifier = None) -> None:
+        file_path = Path(file_info["path"])
+        key = file_info["s3_unique_name"]
         filename = file_path.name  # os.path.basename(file_path)
         self.logger.info(f"Uploading {filename} to bucket {self.s3_bucket}...")
         try:
-            await asyncio.to_thread(self.s3.upload_file, file_path, self.s3_bucket, key)#filename)
+            # Not sure whether it matters whether it is using threads
+            await asyncio.to_thread(self.s3.upload_file, file_path, self.s3_bucket, key, Config = boto3.s3.transfer.TransferConfig(use_threads=False))#filename)
             self.logger.info(f"Uploaded {filename} to {key} successfully.")
+            file_info["uploaded"] = True
+            file_info["uploading"] = False
             #del pending_uploads[file_path]
             ## TODO Here? Plus array
             if self.all_uploaded():
