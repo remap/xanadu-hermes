@@ -1,9 +1,36 @@
 
 
-import shutil, os
+import shutil, os, sys
 from pathlib import Path
 import random
 import time
+import random
+from quickdraw import QuickDrawData
+import subprocess
+import tempfile
+qd = QuickDrawData()
+
+
+with open("ch-quickdraw-categories.txt", "r") as file:
+    words = file.read().splitlines()
+
+# path = os.getcwd()
+# fd, temp_file_name = tempfile.mkstemp()
+# temp_file_name+=".png"
+# category = random.choice(words)
+# i = qd.get_drawing(category)
+# category = category.replace(" ", "-")
+# pngfile = temp_file_name  # os.path.join(path, f"sketch-{category}.png")
+# exrfile = os.path.join(path, f"sketch-{category}.exr")
+# i.image.save(pngfile)
+#
+# command = ["ffmpeg", "-i", pngfile, "-vf", "scale=384:384", exrfile]
+# result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+# print(pngfile, exrfile)
+# os.close(fd)
+# os.remove(temp_file_name)
+# sys.exit(0)
+
 
 instances = ["jb_testing"]
 modules = ["ch1", "ch2", "ch3", "ch4"]
@@ -17,11 +44,11 @@ groups = ["melpomene",
 users = 1
 trials = 1
 
-#
-#
-# groups = ["melpomene"]
-# modules = ["ch3",]
-# users = 1
+
+
+groups = ["melpomene"]
+modules = ["ch1",]
+users = 1
 
 
 
@@ -37,8 +64,8 @@ input_subdir = "input"
 output_subdir = "output"
 
 
-#create = True
-#check = True
+create = True
+check = True
 wait_sec = 5
 
 # Prep dirs
@@ -87,9 +114,26 @@ for instance in instances:
                         media_dir = root_dir / instance / module / input_subdir / group / user / trial
                         print("makedirs", media_dir)
                         os.makedirs(media_dir, exist_ok=True)
-                        media_file = random.choice(media_files)
-                        print("copy", media_file, media_dir / media_target_name)
-                        shutil.copy(media_file, media_dir / media_target_name)
+                        # media_file = random.choice(media_files)
+                        # print("copy", media_file, media_dir / media_target_name)
+                        # shutil.copy(media_file, media_dir / media_target_name)
+
+                        path = os.getcwd()
+                        fd, temp_file_name = tempfile.mkstemp()
+                        temp_file_name += ".png"
+                        category = random.choice(words)
+                        i = qd.get_drawing(category)
+                        category = category.replace(" ", "-")
+                        pngfile = temp_file_name  # os.path.join(path, f"sketch-{category}.png")
+                        exrfile = media_dir / media_target_name
+                        i.image.save(pngfile)
+
+                        command = ["ffmpeg", "-i", pngfile, "-vf", "scale=384:384", exrfile]
+                        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                        print(pngfile, exrfile)
+                        os.close(fd)
+                        os.remove(temp_file_name)
+
 
                     outputs.append( root_dir / instance / module / output_subdir / group / user / trial )
 

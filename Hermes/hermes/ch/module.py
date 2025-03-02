@@ -222,7 +222,7 @@ class GenAIModuleRemote:
             except Exception as e:
                 raise ValueError(f"Invalid S3 ARN: {arn}") from e
             file_path = Path(key)
-            tasks.append(new_loop.create_task(self.download_from_s3(bucket, key, output_dir / file_path.name, collection_key)))
+            tasks.append(new_loop.create_task(self.download_from_s3(bucket, key, output_dir / file_path.name, key)))
 
         new_loop.run_until_complete(asyncio.gather(*tasks))
         new_loop.close()
@@ -233,11 +233,11 @@ class GenAIModuleRemote:
         self.logger.debug(f"Downloading {key} from bucket {bucket} to {file_path} ...")
         try:
             await asyncio.to_thread(self.s3.download_file, bucket, key, file_path)
-            self.logger.info(f"Downloaded {key} from bucket {bucket} to {file_path.as_uri()} successfully.")
+            self.logger.info(f"Downloaded {key} from bucket {bucket} to {file_path.resolve().as_uri()} successfully.")
 
             self.uploadable_collections_status[collection_key]["outputs"].append(file_path.as_uri())
         except Exception as err:
-            self.logger.error(f"Error downloading {key} from bucket {bucket} to {file_path}: {err}", exc_info=True)
+            self.logger.error(f"Error downloading {key} from bucket {bucket} to {file_path.resolve()}: {err}", exc_info=True)
 
     def load_dynamic(self, dynamic_vars: dict, merge=False):
         if merge:
