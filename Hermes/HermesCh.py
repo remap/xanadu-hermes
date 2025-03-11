@@ -144,8 +144,9 @@ if __name__ == "__main__":
 
     ## Config data is configured per module
     instance = "jb_testing"
+    environment = 'stage'
     logger.info(f"Hermes Ch Instance: {instance}")
-    remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/modules/{instance}/config-common.json",
+    remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/modules/{instance}/{environment}-config-common.json",
                                   module_dir=f"ch/modules/{instance}", module_config_filename="config.json")
 
     ## Dynamic data is created at run-time during the show
@@ -157,17 +158,6 @@ if __name__ == "__main__":
     for module_name, remote in remotes.items():
         remote.load_dynamic({
             # These are the files to watch for (so far across all modules)
-            "media_files": [
-                {
-                    "name": "media.png",
-                    "mimetype": "image/png"
-                },
-                {
-                    "name": "media.exr",
-                    "mimetype": "image/x-exr"
-                }
-            ],
-            "metadata_file": "metadata.json",
             "user": "alice",
             "group": "users",
             "tags": ["tag1", "tag2"],

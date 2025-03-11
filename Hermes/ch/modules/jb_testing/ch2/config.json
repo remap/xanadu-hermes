@@ -5,5 +5,16 @@
   "pipeline": {
     "name": "",
     "start_phase": "preprocess"
-  }
+  },
+  "media_files": [
+    {
+      "name": "muse.png",
+      "mimetype": "image/png"
+    },
+    {
+      "name": "sketch.png",
+      "mimetype": "image/png"
+    }
+  ],
+  "metadata_file": "metadata.json"
 }

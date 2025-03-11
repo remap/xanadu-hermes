@@ -45,11 +45,10 @@ users = 1
 trials = 1
 
 
-
-groups = ["melpomene"]
-modules = ["ch1",]
+# groups = ["melpomene"]
+# modules = ["ch1",]
 users = 1
-
+trials = 1
 
 
 
@@ -67,6 +66,8 @@ output_subdir = "output"
 create = True
 check = True
 wait_sec = 5
+
+
 
 # Prep dirs
 for instance in instances:
@@ -91,6 +92,8 @@ for instance in instances:
         os.makedirs(input_dir, exist_ok=True)
         print("makedirs", output_dir)
         os.makedirs(output_dir, exist_ok=True)
+
+##### CH 1
 
 # Make samples
 print("---")

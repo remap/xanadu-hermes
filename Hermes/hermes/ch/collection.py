@@ -91,13 +91,13 @@ class UploadableCollection:
     def import_module(self):
         self.gen_unique_s3_prefix()
         # Metadata handle specially as it will be built after we have all the files
-        self.metadata_file_for_notify = f'{self.s3_unique_prefix}-{self.module.dynamic.metadata_file}'
-        self.metadata_file = dict(path=self.path / Path(self.module.dynamic.metadata_file),
+        self.metadata_file_for_notify = f'{self.s3_unique_prefix}-{self.module.config.metadata_file}' # TODO: Remove distinction between dynamic and config
+        self.metadata_file = dict(path=self.path / Path(self.module.config.metadata_file),
                                                              s3_unique_name=self.metadata_file_for_notify,
                                                              mimetype="application/json", have=False, uploaded=False,
                                                              uploading=False, filetype="meta")
         self.media_files_for_notify = {}
-        for file in self.module.dynamic.media_files:
+        for file in self.module.config.media_files:
             self.media_files_for_notify[ file["name"] ] = f'{self.s3_unique_prefix}-{file["name"]}'
             self.files[ file["name"] ] = dict(path=self.path / Path(file["name"]),
                                               s3_unique_name=f'{self.s3_unique_prefix}-{file["name"]}',

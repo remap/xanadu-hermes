@@ -24,6 +24,11 @@ class SQSListener:
             response = sqs.create_queue(QueueName=self.listen_queue_name)
             self.listen_queue_url = response["QueueUrl"]
             self.logger.warning(f"SQS Listen Queue does not exist, created: {self.listen_queue_url}")
+            attributes = sqs.get_queue_attributes(
+                QueueUrl=self.listen_queue_url,
+                AttributeNames=['QueueArn']
+            )
+            self.listen_queue_arn = attributes['Attributes']['QueueArn']
             self.listen_subscribe_policy = {
                 "Version": "2012-10-17",
                 "Statement": [
