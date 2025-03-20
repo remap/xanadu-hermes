@@ -74,7 +74,7 @@ class GenAIModuleRemote:
     listener = None
     monitor_task = None
 
-    def __init__(self, s3, sqs, sns, config_file: str, config_common_file: str = None, base_dir='.', logger=None):
+    def __init__(self, s3, sqs, sns, config_file: str, config_common_file: str = None, base_dir='.', firebase = None, logger=None):
         # Get AWS clients from above so we don't have to control credentials here
         self.s3 = s3
         self.sqs = sqs
@@ -89,6 +89,8 @@ class GenAIModuleRemote:
         self.uploadable_collections_status = {}
         self.dynamic_vars = {}  # dict version
         self.dynamic = None  # Becomes simplenamespace of dynamic_vars
+        self.firebase = firebase
+
 
         # Read config files
         ## config_common_file :  Common configuration file across all modules(optional), which can be overridden
@@ -116,6 +118,8 @@ class GenAIModuleRemote:
         # Now that we've loaded the name, set up logger
         self.name = self.config.module
 
+
+
         class PrefixAdapter(logging.LoggerAdapter):
             def process(self, msg, kwargs):
                 module = self.extra.get("module", "")
@@ -125,6 +129,13 @@ class GenAIModuleRemote:
 
         self.output_dir = self.base_dir / Path(self.config.metadata.output_dir)
         self.watch_dir = None  # filled in when watching
+
+
+        # firebase
+        self.notify_key = "/".join([self.config.firebase.notify_key, self.name])
+        self.logger.info(f"Firebase notify {self.notify_key}")
+        self.logger.debug(f"Deleting firebase key {self.notify_key}")
+        self.firebase.delete_async(self.config.firebase.notify_key, self.name)
 
         ## Setup SQS notifier callback for end of inference
         self.notifier = SQSNotifier(self.sqs, self.sns, self.config.sqs.notify_queue_name,
@@ -137,6 +148,7 @@ class GenAIModuleRemote:
                                                      self.config.sns.listen_topic_arn, self.logger)
 
         GenAIModuleRemote.listener.add_callback(self.name, self.listen_callback)
+
 
     def to_summary(self):
         s = {}
@@ -186,6 +198,14 @@ class GenAIModuleRemote:
             self.logger.error(s)
             if key in self.uploadable_collections_status:
                 self.uploadable_collections_status[key]["failure"] = True
+            if self.firebase is not None:
+                result = self.firebase.post_async("/".join([self.notify_key, str(key)]),
+                                                  {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT),
+                                                   "status": "failure",
+                                                   "files": {}}, params={'print': 'pretty'},
+                                                  headers={'X_FANCY_HEADER': 'VERY FANCY'},
+                                                  callback=lambda result: self.logger.info(
+                                                      f"firebase post of failure to {self.config.firebase.notify_key} for {key}"))
             return
         if "next_metadata" not in msg:
             self.logger.error(f"Incoming message had no next_metadata: {msg}")
@@ -196,6 +216,10 @@ class GenAIModuleRemote:
         if msg.get("phase") != "postprocess":  # download after the postprocess phase is complete
             return
         self.logger.info(f"{self.name} callback received postprocess message: \n{jformat(msg)}")
+
+        if key not in self.uploadable_collections_status:
+            self.logger.error(f"The key {key} is not a pending collection. Download aborted.")
+            return
 
         # TODO: Template this?
         # Directory structure is instance/module/output/ and we write group/user/trial/
@@ -213,33 +237,51 @@ class GenAIModuleRemote:
 
         new_loop = asyncio.new_event_loop()
         tasks = list()
-        arns = list(msg.get("media_arns").values())
-        arns.append(msg.get("metadata_arn"))
-        for arn in arns:  # ToDo: name collision possibility, at least theoretically
+        # TODO: Hacky for metadata
+        arns = msg.get("media_arns") | {"metadata.json": msg.get("metadata_arn")}  #list(msg.get("media_arns").values())
+        #arns.append(msg.get("metadata_arn"))
+        for filekey, arn in arns.items():  # ToDo: name collision possibility, at least theoretically
             try:
                 resource = arn.split(":", 5)[-1]
-                bucket, key = resource.split('/', 1)
+                bucket, s3key = resource.split('/', 1)
             except Exception as e:
                 raise ValueError(f"Invalid S3 ARN: {arn}") from e
-            file_path = Path(key)
+            file_path = Path(s3key)
             metadata = msg.get("next_metadata")
             collection_key = Path("/".join([metadata["group"],metadata["user"], metadata["trial"]])) # Gotta fix this use of path
-            tasks.append(new_loop.create_task(self.download_from_s3(bucket, key, output_dir / file_path.name, collection_key)))
+            tasks.append(new_loop.create_task(self.download_from_s3(bucket, s3key, filekey, output_dir / file_path.name, collection_key)))
 
-        new_loop.run_until_complete(asyncio.gather(*tasks))
+        gather_future = asyncio.gather(*tasks)
+        gather_future.add_done_callback(lambda fut: self.download_complete(fut, key ))
+        new_loop.run_until_complete(gather_future)
         new_loop.close()
 
-    async def download_from_s3(self, bucket, key, file_path: Path,collection_key, notifier=None) -> None:
+    def download_complete(self, future, collection_key):
+        files = {}
+        for f in future.result():
+            for k,v in f.items():
+                files[k.replace(".","_")] = v   # firebase doesn't support periods in keys.
+        self.logger.info(f"COMPLETE for {collection_key} results: {json.dumps(files)}")
+        if self.firebase is not None:
+            result = self.firebase.post_async("/".join([self.notify_key,str(collection_key)]), {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT), "status" : "success", "files" : files },
+                                         callback=lambda result: self.logger.debug(f"firebase post to {self.config.firebase.notify_key} for {collection_key}"))
+
+
+
+
+    async def download_from_s3(self, bucket, s3key, filekey, file_path: Path,collection_key, notifier=None) -> None:
         file_path = Path(file_path)
         filename = file_path.name  # os.path.basename(file_path)
-        self.logger.debug(f"Downloading {key} from bucket {bucket} to {file_path} ...")
+        self.logger.debug(f"Downloading {s3key} from bucket {bucket} to {file_path} ...")
         try:
-            await asyncio.to_thread(self.s3.download_file, bucket, key, file_path)
-            self.logger.info(f"Downloaded {key} from bucket {bucket} to {file_path.resolve().as_uri()} successfully.")
+            await asyncio.to_thread(self.s3.download_file, bucket, s3key, file_path)
+            self.logger.info(f"Downloaded {s3key} from bucket {bucket} to {file_path.resolve().as_uri()} successfully.")
 
             self.uploadable_collections_status[collection_key]["outputs"].append(file_path.resolve().as_uri())
         except Exception as err:
-            self.logger.error(f"Error downloading {key} from bucket {bucket} to {file_path.resolve()}: {err}", exc_info=True)
+            self.logger.error(f"Error downloading {s3key} from bucket {bucket} to {file_path.resolve()}: {err}", exc_info=True)
+            return None
+        return {filekey : str(file_path.resolve())}
 
     def load_dynamic(self, dynamic_vars: dict, merge=False):
         if merge:

@@ -19,6 +19,7 @@ from starlette.responses import Response
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 import os
 import jsonpickle
+from hermes.fb.anonclient import FBAnonClient
 
 port_web = 4243
 static_web_dir = "ch/web"
@@ -120,7 +121,10 @@ if __name__ == "__main__":
     sqs = session.client('sqs')
     sns = session.client('sns')
 
-
+    # Create Firebase client
+    # Anon client with token renewal
+    fbclient = FBAnonClient(credentialFile="xanadu-secret-f5762-firebase-adminsdk-9oc2p-1fb50744fa.json", dbURL='https://xanadu-f5762-default-rtdb.firebaseio.com')
+    firebase = fbclient.getFB()
 
     def load_remote_configs(s3, sqs, sns, common_config: str, module_dir: str, module_config_filename: str) -> dict:
         module_dir = Path(module_dir)
@@ -131,7 +135,7 @@ if __name__ == "__main__":
                 if config_file.exists():
                     try:
                         remote = GenAIModuleRemote(s3, sqs, sns, config_file, config_common_file=common_config,
-                                                   base_dir=subpath, logger=logger)
+                                                   base_dir=subpath, firebase=firebase, logger=logger)
                         remotes[remote.config.module] = remote
                         logger.info(f"Loaded config for module '{remote.config.module}' from {config_file}")
                     except Exception as e:
