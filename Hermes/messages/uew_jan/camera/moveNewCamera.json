@@ -1,0 +1,16 @@
+{
+  "description": "Move the camera to a specified location and rotation in the editor or play-in-editor.",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "/Game/_Sets/_Xanadu/Levels/UEDPIE_0_Xanadu.Xanadu:PersistentLevel.DefaultPawn_0",
+    "functionName": "SetActorLocation",
+    "parameters": {
+      "Location": {
+        "X": "21",
+        "Y": "122",
+        "Z": "32"
+      },
+      "generateTransaction": true
+    }
+  }
+}

@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
     ## Config data is configured per module
     instance = "jb_testing"
-    environment = 'stage'
+    environment = 'dev'
     logger.info(f"Hermes Ch Instance: {instance}")
     remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/modules/{instance}/{environment}-config-common.json",
                                   module_dir=f"ch/modules/{instance}", module_config_filename="config.json")

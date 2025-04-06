@@ -1,0 +1,10 @@
+{
+    "instance" : "xanadu",
+    "world" : "/Game/_Sets/_Xanadu/Levels/Xanadu.Xanadu",
+    "_world" : "/Game/_Sets/_Xanadu/Levels/Xanadu.Xanadu",
+    "prefix": "/Game/_Sets/_Xanadu/Levels/",
+    "_prefix": "/Game/_Sets/_Xanadu/Levels/",
+    "_pie": "UEDPIE_0_",
+    "hermes_world" : "/Game/_Sets/_Xanadu/Levels/Xanadu.Xanadu:HermesWorldSubsystem_0",
+    "ndc" : "/Game/_Sets/Fall_24/ML_Xanadu_JB.ML_Xanadu_JB:PersistentLevel.NDC_7x540x1080_C_1"
+}

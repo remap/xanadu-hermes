@@ -361,9 +361,9 @@ if __name__=="__main__":
             return
 
         templates = []
-
+        msgFileArg = ""
         params = None
-        if len(args) > 1:
+        if len(args) >= 1:
             if verb == "call_generic":
                 cg_template = Template({"_object": args[0], "_function": args[1], "_transaction": True})
                 templates.append(cg_template)
