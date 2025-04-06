@@ -352,6 +352,9 @@ if __name__=="__main__":
         if verb=="mapnames":
             logger.info(f"OSC UE < mapnames {args}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
             if "dump" in args: dumpmap = True
+        elif verb=="mapnamesglobal":
+            logger.info(f"OSC UE < mapnamesglobal {args}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
+            if "dump" in args: dumpmap = True
         elif verb=="call":
             logger.info(f"OSC UE < call {args[0]}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
         elif verb=="call_generic":
@@ -402,6 +405,8 @@ if __name__=="__main__":
                     uec.sendFromFile(msgfile, suppressBodyPrint=False, applyTemplates=True, templates=templates, params=params) #)
                 elif verb=="mapnames":
                     uec.getNameMap(dump=dumpmap, force=True)
+                elif verb == "mapnamesglobal":
+                    uec.getNameMap(dump=dumpmap, force=True, useGlobal=True)
                     # (rc, result) = uec.sendFromFile(os.path.join(internalMessageRoot,"dumpActorNameMap.json"), suppressBodyPrint=True, applyTemplates=True,
                     #                                 templates=templates)
                     # if result is not None:

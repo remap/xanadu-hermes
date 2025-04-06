@@ -1,0 +1,9 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{hermes_world}}",
+    "functionName": "DumpGlobalObjectMap",
+    "transaction": true
+  }
+}

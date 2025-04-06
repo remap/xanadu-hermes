@@ -264,14 +264,19 @@ class UEClient:
             self.logger.error(f"world check failed! {sc} {result}")
             return sc
 
-    def getNameMap(self, dump=False, force=False):
+    def getNameMap(self, dump=False, force=False, useGlobal=False):
         if self.mapNames==False and not force:
             self.logger.warning(f"---- Skipping name map load {self.instance}")
             return
         self.logger.info(f"----  Name map load to UE for {self.instance}")
-        self.sendFromFile(os.path.join(self.internalMessageRoot, "dumpActorNameMap.json"),
-                                        suppressBodyPrint=True, applyTemplates=True, block=False,
-                                        callback=lambda future : self.processNameMap(future.result()[1],dump))
+        if useGlobal:
+            self.sendFromFile(os.path.join(self.internalMessageRoot, "dumpGlobalNameMap.json"),
+                                            suppressBodyPrint=True, applyTemplates=True, block=False,
+                                            callback=lambda future : self.processNameMap(future.result()[1],dump))
+        else:
+            self.sendFromFile(os.path.join(self.internalMessageRoot, "dumpActorNameMap.json"),
+                                            suppressBodyPrint=True, applyTemplates=True, block=False,
+                                            callback=lambda future : self.processNameMap(future.result()[1],dump))
         #self.processNameMap(result, dump)
         return
 
@@ -299,11 +304,12 @@ class UEClient:
         map = json.loads(result[0]["ReturnValue"])#
         if self.isPIE and "_pie" in self.template:
             for k in map:
-                comps = map[k].split("/")
-                comps[-1] = self.template["_pie"]+comps[-1]
-                map[k] = "/".join(comps)
-               #print(map[k])
-                #map[k] = map[k].replace(self.template["_prefix"], self.template["_prefix"]+self.template["pie"])
+                if not self.template["_pie"] in map[k]: # /Memory objects already have PIE prefix
+                    comps = map[k].split("/")
+                    comps[-1] = self.template["_pie"]+comps[-1]
+                    map[k] = "/".join(comps)
+                   #print(map[k])
+                    #map[k] = map[k].replace(self.template["_prefix"], self.template["_prefix"]+self.template["pie"])
 
         if dump: self.logger.debug(jformat(map))
         self.logger.info(f"Loaded {len(map)} name maps.")
