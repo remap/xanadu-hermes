@@ -4,11 +4,11 @@
   "metadata": {
     "template_file": "metadata_template.jsont",
     "parser": "jinja2",
-    "output_dir": "output"
+    "output_dir": "stage/output"
   },
   "ue": {
-    "media_watch_dir": "input",
-    "output_dir" : "output",
+    "media_watch_dir": "stage/input",
+    "output_dir" : "stage/output",
     "collection_matcher" : "^(?:\\d+|melpomene|calliope|thalia|euterpe|terpsicore|erato|kira)$",
     "upload_on_modified": true,
     "require_depth" : 3

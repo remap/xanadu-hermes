@@ -161,9 +161,9 @@ class SQSNotifier:
             "metadata_arn": f"arn:aws:s3:::{self.bucket}/{metadata_file}",
             "pipeline": f"{self.pipeline}"
         }
-        self.logger.debug(self.notify_queue_url)
-        self.logger.debug(self.message_body)
-        self.logger.debug(self.message_attributes)
+        self.logger.debug(f"SQS notify QueueURL: {self.notify_queue_url}")
+        self.logger.debug(f"SQS notify MessageBody: {self.message_body}")
+        self.logger.debug(f"SQS notify MessageAttributes: {self.message_attributes}")
         response = self.sqs.send_message(
             QueueUrl=self.notify_queue_url,
             MessageBody=json.dumps(self.message_body),

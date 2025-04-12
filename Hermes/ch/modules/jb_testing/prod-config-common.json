@@ -1,0 +1,30 @@
+{
+  "target_environment": "production",
+  "instance": "jb_testing",
+  "metadata": {
+    "template_file": "prod/metadata_template.jsont",
+    "parser": "jinja2",
+    "output_dir": "prod/output"
+  },
+  "ue": {
+    "media_watch_dir": "input",
+    "output_dir" : "prod/output",
+    "collection_matcher" : "^(?:\\d+|melpomene|calliope|thalia|euterpe|terpsicore|erato|kira)$",
+    "upload_on_modified": true,
+    "require_depth" : 3
+  },
+  "s3": {
+    "input_bucket": "xanadu-raw-input",
+    "output_bucket": "xanadu-postprocess"
+  },
+  "sqs": {
+    "notify_queue_name": "xanadu",
+    "listen_queue_name": "xanadu-hermes-ch-jb_testing"
+  },
+  "sns": {
+    "listen_topic_arn": "arn:aws:sns:us-west-2:976618892613:xanadu"
+  },
+  "firebase": {
+    "notify_key": "/xanadu/ch/notify"
+  }
+}

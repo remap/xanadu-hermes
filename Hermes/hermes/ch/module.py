@@ -407,15 +407,15 @@ class GenAIModuleRemote:
         """Watch the directory for new files and upload them."""
         watch_path = Path(self.base_dir / self.config.ue.media_watch_dir)
         self.watch_path = watch_path
-        self.logger.info(f"Watching {self.watch_path}, with output dir {self.output_dir}")
+        self.logger.info(f"Watching {self.watch_path.resolve()}, with output dir {self.output_dir.resolve()}")
         debounce_list = {}
         collection_matcher = re.compile(self.config.ue.collection_matcher)  # filter new directories based on regexp
 
         # only create one of these
         if GenAIModuleRemote.monitor_task is None:
             GenAIModuleRemote.monitor_task = asyncio.create_task(asyncio.to_thread(GenAIModuleRemote.listener.monitor))
-
         self.loop = asyncio.get_running_loop()
+
         async for changes in awatch(watch_path):
             for change, file_path in changes:
                 file_path = Path(file_path)

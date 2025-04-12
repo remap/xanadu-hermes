@@ -20,6 +20,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 import os
 import jsonpickle
 from hermes.fb.anonclient import FBAnonClient
+from types import SimpleNamespace
 
 port_web = 4243
 static_web_dir = "ch/web"
@@ -31,10 +32,20 @@ remotes = {}
 pending_uploads = {}
 DEBOUNCE_SEC = 1
 
+# Configure the instance
+# TODO: Change to arguments?
+instance = "jb_testing"
+environment = SimpleNamespace()
+environment.name = "prod"
+environment.config_prefix = f"{environment.name}-"
+environment.module_config_dir = f"{environment.name}/"
+
+
 # Logger
 path = Path("logconfig-ch.json")
 with path.open("r", encoding="utf-8") as f:
     logconfig = json.load(f)
+logconfig["handlers"]["file"]["filename"] = f"log/{environment.config_prefix}HermesCh.log"
 logging.config.dictConfig(logconfig)
 logger = logging.getLogger("main")
 logger.setLevel(logging.DEBUG)
@@ -147,36 +158,14 @@ if __name__ == "__main__":
 
 
     ## Config data is configured per module
-    instance = "jb_testing"
-    environment = 'dev'
     logger.info(f"Hermes Ch Instance: {instance}")
-    remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/modules/{instance}/{environment}-config-common.json",
-                                  module_dir=f"ch/modules/{instance}", module_config_filename="config.json")
+    remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/modules/{instance}/{environment.config_prefix}config-common.json",
+                                  module_dir=f"ch/modules/{instance}", module_config_filename=f"{environment.module_config_dir}config.json")
 
-    ## Dynamic data is created at run-time during the show
-    ## It is what is watched for.
-    ##
-    ## Probably we want to use user/group to match up with the directories...
-    # TODO: Variable for that
-    ##
+
     for module_name, remote in remotes.items():
-        remote.load_dynamic({
-            # These are the files to watch for (so far across all modules)
-            "user": "alice",
-            "group": "users",
-            "tags": ["tag1", "tag2"],
-            "timestamp": "2025-01-31T12:00:00"
-        })
-        # print("---- CONFIG ----")
-        # pprint(remote.config)
-        # print("---- DYNAMIC ----")
-        # pprint(remote.dynamic)
-        # metadata_rendered = remote.render_template()
-        # print("---- METADATA ----")
-        # print (jformat(metadata_rendered))
-        # print(remote.write_template())
+        remote.load_dynamic({})
 
-    #logger.info("Running async watchers...")
     async def watch():
         tasks = [remote.watch_directory() for remote in remotes.values()]
         await asyncio.gather(*tasks)

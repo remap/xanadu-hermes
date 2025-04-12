@@ -2,7 +2,7 @@
   "any": {
     "load": false,
     "note": "Should receive a copy of any message (unused)",
-    "host": "192.168.1.85",
+    "host": "128.97.175.88",
     "port": 30010,
     "prefix": "[unused]",
     "mapNames": false,
@@ -10,7 +10,7 @@
   },
   "ed": {
     "note": "Editor - including in multi-user sessions",
-    "host": "131.179.142.132",
+    "host": "128.97.175.88",
     "port": 30010,
     "prefix": "[unused]",
     "mapNames": true,
@@ -18,7 +18,7 @@
   },
   "pie": {
     "note": "Play in editor",
-    "host": "131.179.142.132",
+    "host": "128.97.175.88",
     "port": 30010,
     "prefix": "[unused]",
     "isPIE": true,
@@ -27,7 +27,7 @@
   },
   "game": {
     "note": "Standalone game, launched frome editor or separantely",
-    "host": "131.179.142.132",
+    "host": "128.97.175.88",
     "port": 30110,
     "prefix": "[unused]",
     "mapNames": true,
@@ -35,7 +35,7 @@
   },
   "ndc": {
     "note": "nDisplay display controller",
-    "host": "131.179.142.132",
+    "host": "128.97.175.88",
     "port": 30210,
     "prefix": "[unused]",
     "mapNames": true,
