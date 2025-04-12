@@ -7,6 +7,11 @@
     <link href="https://unpkg.com/tabulator-tables@5.4.3/dist/css/tabulator_midnight.min.css" rel="stylesheet">
 
     <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.5/js/lightbox-plus-jquery.min.js"
+            integrity="sha512-/IJVg2oav2TggiFftaMSPgttHNmgu/0RSGP64Nm7wqYwjkxj4hAHLRMJi3QNTa22f4pIkvTsCpB848HEilV6MA=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.5/css/lightbox.min.css" rel="stylesheet">
 
     <style>
         body {
@@ -67,27 +72,126 @@
             border-top: 1px solid #444;
         }
 
+
     </style>
 </head>
 <body>
+
+<a id="hidden-lightbox" href="" data-lightbox="custom" style="display:none;"></a>
+
 <div class="explanation" style="display: flex; justify-content: space-between; align-items: center;">
     <div>
         <h1 style="font-size: 1.25rem; margin: 0;">Hermes Ch Monitor</h1>
+        <p>Right-click for last message.  Click on an image for full preview.</p>
     </div>
     <div class="buttons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 200px;">
         <button onclick="get_status()" style="width: 100%; grid-column: span 2;">Get Status</button>
     </div>
 
 </div>
-<div id="status-table" style="width: 100%; overflow-x: auto;"></div>
+<div id="status-table" style="width: 100%; height:100%; overflow-x: auto;"></div>
 <pre id="output"></pre>
 <script>
 
+    lightbox.option({fadeDuration: 0, imageFadeDuration: 0, resizeDuration: 0});
 
+    function openImageLightbox(imageUrl) {
+        var link = document.getElementById('hidden-lightbox');
+        link.href = imageUrl;
+        link.click();
+    }
+
+    function imageLightbox(cell, formatterParams, onRendered) {
+        var value = cell.getValue();
+        var img = document.createElement("img");
+        img.src = value;
+        img.style.height = "100px";
+        img.style.cursor = "pointer";
+        img.onclick = function () {
+            openImageLightbox(value);
+        };
+        return img;
+    }
+
+    async function approval(row) {
+        console.log("Row approved:", row);
+        const response = await fetch(encodeURI(`/approve?module=${row.remote}&collection=${row.collection}`), {
+            method: "GET",
+            headers: {"Content-Type": "text/plain"},
+        });
+    }
+    async function pulse_cue(row) {
+        console.log("Row pulse_cue:", row);
+        const response = await fetch(encodeURI(`/pulse_cue?module=${row.remote}&collection=${row.collection}`), {
+            method: "GET",
+            headers: {"Content-Type": "text/plain"},
+        });
+    }
+function customApprovalFormatter(cell, formatterParams, onRendered) {
+    const value = cell.getValue();
+    return value
+        ? '<span style="color: yellow; font-size: 12px;">SENT</span>'
+        : '<span style="color: white; font-size: 12px;">CUE</span>';
+}
     const tableColumns = [
         {title: "Module", field: "remote", headerFilter: "input", hozAlign: "center", maxWidth: "100"},
         {title: "Collection", field: "collection", headerFilter: "input"},
-        // {title: "Rel Path", field: "rel_path", headerFilter: "input"},
+        {
+            title: "Approve",
+            field: "approved",
+            hozAlign: "center",
+            verAlign: "center",
+
+            formatter: "tickCross",
+            cellClick: function (e, cell) {
+                if (cell.getValue() !== true) {
+                    cell.getRow().update({approved: true});
+                    approval(cell.getRow().getData());
+                }
+            },
+            cellStyled: function (cell) {
+                const cellEl = cell.getElement();
+                cellEl.style.fontSize = "48pt";            // Make the tick icon bigger
+                cellEl.style.display = "flex";             // Use flex layout for centering
+                cellEl.style.alignItems = "center";        // Vertically center
+                cellEl.style.justifyContent = "center";    // Horizontally center
+            }
+        },
+        {
+            title: "Send Cue",
+            field: "pulse_cue",
+            hozAlign: "center",
+            verAlign: "center",
+            formatter: customApprovalFormatter,
+            cellClick: function (e, cell) {
+                if (cell.getValue() !== true) {
+                    cell.getRow().update({pulse_cue: true});
+                    pulse_cue(cell.getRow().getData());
+                }
+            },
+            cellStyled: function (cell) {
+                const cellEl = cell.getElement();
+                cellEl.style.fontSize = "48pt";            // Make the tick icon bigger
+                cellEl.style.display = "flex";             // Use flex layout for centering
+                cellEl.style.alignItems = "center";        // Vertically center
+                cellEl.style.justifyContent = "center";    // Horizontally center
+            }
+        },
+        {
+            title: "Input",
+            field: "input",
+            formatter: imageLightbox,
+            hozAlign: "center",
+            maxWidth: 100
+        },
+        {
+            title: "Preview",
+            field: "preview",
+            formatter: imageLightbox,
+            hozAlign: "center",
+            maxWidth: 100
+        },
+
         {title: "Phase", field: "phase", headerFilter: "input"},
         {
             title: "Status",
@@ -121,7 +225,7 @@
         paginationSize: 50
     });
 
-    table.on("rowClick",
+    table.on("rowContext",
         function (e, row) {
             const data = row.getData();
             //console.log(data);
@@ -132,6 +236,16 @@
 
             }
         });
+
+    // table.on("rowClick",
+    //     function (e, row) {
+    //         const data = row.getData();
+    //         //console.log(data);
+    //         openImageLightbox(data.preview)
+    //     });
+
+    let lastData = [];
+
 
     async function get_status() {
         const output = document.getElementById("output");
@@ -151,11 +265,17 @@
             Object.keys(jsonData.content).forEach(remoteKey => {
                 const remote = jsonData.content[remoteKey];
                 const collections = remote.uploadable_collections;
-
+                //console.log(remote)
                 Object.keys(collections).forEach(collectionKey => {
                     const collection = collections[collectionKey];
+                    //console.log(collection)
+                    //onsole.log(collection.output_uris[remote.preview_key]);
                     rows.push({
                         collection: collectionKey,
+                        approved: collection.approved,
+                        pulse_cue: collection.pulse_cue,
+                        input: collection?.input_uris?.[remote.input_preview_key] ?? "",
+                        preview: collection?.output_uris?.[remote.preview_key] ?? "",
                         rel_path: collection.rel_path,
                         s3_unique_prefix: collection.s3_unique_prefix,
                         last_upload_time: collection.last_upload_time,
@@ -171,7 +291,14 @@
                 });
             });
 
-            table.replaceData(rows);
+            // table.replaceData(rows);
+
+            const scrollPos = window.pageYOffset;
+            table.replaceData(rows).then(() => {
+                window.scrollTo(0, scrollPos);
+            });
+
+
             output.textContent = new Date().toLocaleTimeString() + " Poll for status successful.";
         } catch (error) {
             output.textContent = new Date().toLocaleTimeString() + " Error " + error.message;
@@ -183,7 +310,6 @@
         get_status().then();
     });
     setInterval(get_status, 2000);
-
 
 
 </script>

@@ -4,7 +4,7 @@
   "metadata": {
     "template_file": "metadata_template.jsont",
     "parser": "jinja2",
-    "output_dir": "stage/output"
+    "output_dir": "output"
   },
   "ue": {
     "media_watch_dir": "stage/input",
@@ -25,6 +25,7 @@
     "listen_topic_arn": "arn:aws:sns:us-west-2:976618892613:stage-xanadu"
   },
   "firebase": {
-    "notify_key": "/stage-xanadu/ch/notify"
+    "notify_key": "/stage-xanadu/ch/notify",
+        "cue_key": "/stage-xanadu/ch/cue"
   }
 }

@@ -1,0 +1,22 @@
+{
+  "module": "ch3",
+  "description": "Chrysopoeia 3",
+  "candidates_to_generate": 1,
+  "pipeline": {
+    "name": "",
+    "start_phase": "preprocess"
+  },
+  "media_files": [
+    {
+      "name": "content.png",
+      "mimetype": "image/png"
+    },
+    {
+      "name": "style.png",
+      "mimetype": "image/png"
+    }
+  ],
+  "input_preview_key" : "content_png",
+    "preview_key": "sd35_image_png",
+  "metadata_file": "metadata.json"
+}

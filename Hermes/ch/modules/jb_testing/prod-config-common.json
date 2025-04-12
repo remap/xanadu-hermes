@@ -2,12 +2,12 @@
   "target_environment": "production",
   "instance": "jb_testing",
   "metadata": {
-    "template_file": "prod/metadata_template.jsont",
+    "template_file": "metadata_template.jsont",
     "parser": "jinja2",
-    "output_dir": "prod/output"
+    "output_dir": "output"
   },
   "ue": {
-    "media_watch_dir": "input",
+    "media_watch_dir": "prod/input",
     "output_dir" : "prod/output",
     "collection_matcher" : "^(?:\\d+|melpomene|calliope|thalia|euterpe|terpsicore|erato|kira)$",
     "upload_on_modified": true,
@@ -25,6 +25,7 @@
     "listen_topic_arn": "arn:aws:sns:us-west-2:976618892613:xanadu"
   },
   "firebase": {
-    "notify_key": "/xanadu/ch/notify"
+    "notify_key": "/xanadu/ch/notify",
+        "cue_key": "/xanadu/ch/cue"
   }
 }

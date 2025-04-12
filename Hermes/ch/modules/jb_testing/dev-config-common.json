@@ -2,9 +2,9 @@
   "target_environment": "dev",
   "instance": "jb_testing",
   "metadata": {
-    "template_file": "dev/metadata_template.jsont",
+    "template_file": "metadata_template.jsont",
     "parser": "jinja2",
-    "output_dir": "dev/output"
+    "output_dir": "output"
   },
   "ue": {
     "media_watch_dir": "dev/input",
@@ -25,6 +25,7 @@
     "listen_topic_arn": "arn:aws:sns:us-west-2:976618892613:dev-xanadu"
   },
   "firebase": {
-    "notify_key": "/dev-xanadu/ch/notify"
+    "notify_key": "/dev-xanadu/ch/notify",
+    "cue_key": "/dev-xanadu/ch/cue"
   }
 }

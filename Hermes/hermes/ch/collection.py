@@ -29,7 +29,8 @@ TIME_STRING_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 class UploadableCollection:
 
-    def __init__(self, s3, module: "GenAIModuleRemote", file_path : Path,  rel_path : Path, metadatawriter=None, file_actions=None, logger=None, notifier=None, loadExisting=False):
+
+    def __init__(self, s3, module: "GenAIModuleRemote", file_path : Path,  rel_path : Path, metadatawriter=None, file_actions=None, logger=None, notifier=None, loadExisting=False, input_uri_base = ""):
         self.logger = logger or logging.getLogger(__name__)
         self.s3 = s3
         self.logger.setLevel(logging.DEBUG)
@@ -42,6 +43,17 @@ class UploadableCollection:
         self.notifier = notifier
         self.last_upload_time = None
         self.upload_count = 0
+
+        # Written here at startup
+        self.input_uris = {}
+
+        # Module writes these out from the watcher
+        self.output_uris = {}
+        self.input_uri_base = input_uri_base
+        self.firebase_notify_files = ""
+
+        self.approved = False
+        self.sent_cue = False;
 
         if metadatawriter is None:
             self.metadatawriter = self.simplemetadatawriter
@@ -79,6 +91,10 @@ class UploadableCollection:
         s["upload_count"] = self.upload_count
         s["metadata_file"] = self.metadata_file
         s["media_files"] = self.files
+        # web preview
+        s["approved"] = self.approved
+        s["output_uris"] = self.output_uris   # This gives us the keys.  TODO: Fix outputs...
+        s["input_uris"] = self.input_uris
         return s
 
     def to_json(self):
@@ -103,6 +119,11 @@ class UploadableCollection:
                                               s3_unique_name=f'{self.s3_unique_prefix}-{file["name"]}',
                                               mimetype=file["mimetype"],
                                               have=False, uploaded=False, uploading=False, filetype="media")
+
+            uri_key = file["name"].replace('.','_')  #aws services compat
+            self.input_uris[uri_key] = Path(self.input_uri_base) / self.rel_path / file["name"]
+            #print(self.input_uris[uri_key])
+           #print(file["name"], self.input_uris[file["name"]])
         self.s3_bucket = self.module.config.s3.input_bucket
 
     def generate_random_string(self):

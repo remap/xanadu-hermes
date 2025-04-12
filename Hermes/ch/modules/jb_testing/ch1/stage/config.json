@@ -1,0 +1,22 @@
+{
+  "module": "ch1",
+  "description": "Chrysopoeia 1",
+  "candidates_to_generate": 1,
+  "pipeline": {
+    "name": "",
+    "start_phase": "preprocess"
+  },
+  "media_files": [
+    {
+      "name": "muse.png",
+      "mimetype": "image/png"
+    },
+    {
+      "name": "sketch.png",
+      "mimetype": "image/png"
+    }
+  ],
+    "input_preview_key" : "sketch_png",
+    "preview_key": "output_png",
+  "metadata_file": "metadata.json"
+}

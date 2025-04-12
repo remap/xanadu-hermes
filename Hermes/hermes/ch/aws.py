@@ -80,7 +80,7 @@ class SQSListener:
 
     def monitor(self):
 
-        self.logger.debug("starting SQSNotifier.monitor")
+        self.logger.debug("starting SQSListener.monitor")
 
         try:
             self.sns.subscribe(
@@ -90,7 +90,7 @@ class SQSListener:
             )
             self.logger.info(f"Subscribed {self.listen_queue_arn} to {self.listen_topic_arn}")
         except Exception as e:
-            self.logger.error(f"SQS Notify exception subscribing {self.listen_queue_arn} to {self.listen_topic_arn}", exc_info=True)
+            self.logger.error(f"SQS Listen exception subscribing {self.listen_queue_arn} to {self.listen_topic_arn}", exc_info=True)
 
 
         #self.logger.debug("waiting...")
@@ -104,22 +104,29 @@ class SQSListener:
                 )
                 for msg in msgs.get("Messages", []):
                     payload =  json.loads(msg["Body"])["Message"]
-                    self.logger.debug(f"SQS Notify Received message: {payload}")
+                    jpayload = None
+                    try:
+                        jpayload = json.loads(payload)
+                        module = jpayload.get("module", "[no module]")
+                        self.logger.debug(f"SQS Listen Received {module} message: {payload}")
+                    except:
+                        self.logger.error(f"SQS Listen Received unparseable message: {payload}")
+                        return
                     try:
                         #self.listen_callback(payload)
                         for key, callback in self.listen_callbacks.items():
                             try:
-                                callback(json.loads(payload))
+                                callback(jpayload)
                             except Exception as e:
-                                self.logger.error(f"Exception in SQS Notify listen_callback with key {key}: {e}", exc_info=True)
+                                self.logger.error(f"Exception in SQS Listen listen_callback with key {key}: {e}", exc_info=True)
                     except Exception as e:
-                        self.logger.error("Exception in SQS Notify listen_callback", exc_info=True )
+                        self.logger.error("Exception in SQS Listen listen_callback", exc_info=True )
                     self.sqs.delete_message(
                         QueueUrl=self.listen_queue_url,
                         ReceiptHandle=msg["ReceiptHandle"]
                     )
             except Exception as e:
-                self.logger.error("Error in SQS Notify monitor loop", exc_info=True)
+                self.logger.error("Error in SQS Listen monitor loop", exc_info=True)
 
 
 class SQSNotifier:

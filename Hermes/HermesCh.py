@@ -65,7 +65,7 @@ class EmbeddedFastAPIServer:
         self.port = port
         self.server_thread = None
 
-        self.config = Config(app=self.app, host=self.host, port=self.port, log_level="warning")
+        self.config = Config(app=self.app, host=self.host, port=self.port, log_level="error")
         self.server = Server(config=self.config)
         self._configure_routes()
 
@@ -83,16 +83,27 @@ class EmbeddedFastAPIServer:
             for key, remote in remotes.items():
                 status[key] = remote.to_summary()
             return {"content": status }
-            # if not os.path.exists(self.persistFile):
-            #     raise HTTPException(status_code=404, detail="File not found.")
-            # with open(self.persistFile, "rb") as f:
-            #     content = f.read()
-            # return {"content": content}
 
-        if os.path.exists(static_web_dir):
-            self.app.mount("/", StaticFiles(directory=static_web_dir, html=True), name="static")
-        else:
-            raise FileNotFoundError(f"Static file '{static_web_dir}' not found.")
+        @self.app.get("/approve")
+        async def approve(module: str, collection: str):
+            status = {}
+            self.logger.warning(f"Approve for {module} {collection}")
+            try:
+                status = remotes[module].approve(Path(collection))
+            except:
+                self.logger.error(f"Error in approve call", exc_info=True)
+            return {"content": status }
+
+        @self.app.get("/pulse_cue")
+        async def pulse_cue(module: str, collection: str):
+            status = {}
+            self.logger.warning(f"Pulse_cue for {module} {collection}")
+            try:
+                status = remotes[module].pulse_cue(Path(collection))
+            except:
+                self.logger.error(f"Error in pulse_cue call", exc_info=True)
+            return {"content": status }
+
 
     def _run_server(self):
         self.server.run()
@@ -115,8 +126,7 @@ if __name__ == "__main__":
     # Create the server instance
     server = EmbeddedFastAPIServer(host="127.0.0.1", port=port_web, logger=logger)
 
-    # Start the server in a separate thread
-    server.start()
+
 
     # AWS secrets
     with open("xanadu-secret-aws.json") as f:
@@ -162,9 +172,33 @@ if __name__ == "__main__":
     remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/modules/{instance}/{environment.config_prefix}config-common.json",
                                   module_dir=f"ch/modules/{instance}", module_config_filename=f"{environment.module_config_dir}config.json")
 
-
+    # TODO MOVE URI BASE OUT
     for module_name, remote in remotes.items():
         remote.load_dynamic({})
+
+        remote.output_uri_base = f"/output/{module_name}/"
+        os.makedirs(remote.media_output_dir, exist_ok=True)
+        logger.info(f"Web server publishing {remote.output_uri_base} from {remote.media_output_dir}")
+        server.app.mount(remote.output_uri_base, StaticFiles(directory=remote.media_output_dir), name=f"static_{module_name}")
+
+        remote.input_uri_base = f"/input/{module_name}/"
+        os.makedirs(remote.watch_path, exist_ok=True)
+        logger.info(f"Web server publishing {remote.input_uri_base} from {remote.watch_path}")
+        server.app.mount(remote.input_uri_base, StaticFiles(directory=remote.watch_path), name=f"static_{module_name}")
+
+
+
+    # provide the default handler (has to come after the above)
+    # use to serve index.html
+    if os.path.exists(static_web_dir):
+        server.app.mount("/", StaticFiles(directory=static_web_dir, html=True), name="static")
+    else:
+        raise FileNotFoundError(f"Static file '{static_web_dir}' not found.")
+
+    # Start the server in a separate thread
+    server.start()
+
+
 
     async def watch():
         tasks = [remote.watch_directory() for remote in remotes.values()]
