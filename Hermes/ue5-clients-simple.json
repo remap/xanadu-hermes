@@ -1,7 +1,7 @@
 {
   "ed": {
     "note": "Editor - including in multi-user sessions",
-    "host": "100.101.130.78",
+    "host": "192.168.68.66",
     "port": 30010,
     "mapNames": true,
     "check": true
