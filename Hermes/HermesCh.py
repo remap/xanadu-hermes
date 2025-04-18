@@ -36,7 +36,7 @@ DEBOUNCE_SEC = 1
 # TODO: Change to arguments?
 instance = "jb_testing"
 environment = SimpleNamespace()
-environment.name = "prod"
+environment.name = "dev"
 environment.config_prefix = f"{environment.name}-"
 environment.module_config_dir = f"{environment.name}/"
 

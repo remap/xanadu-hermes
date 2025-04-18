@@ -1,0 +1,16 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "SetScreenLocation",
+    "parameters": {
+      "location": {
+        "X": "{{x}}",
+        "Y": "{{y}}",
+        "Z": "{{z}}"
+      }
+    },
+    "generateTransaction": true
+  }
+}

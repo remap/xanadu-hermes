@@ -5,7 +5,7 @@
     "objectPath": "{{hermes_world}}",
     "functionName": "DumpGlobalObjectMap",
     "parameters": {
-      "bUsePIE": "{{pie}}"
+      "bUsePIE": "true"
     },
     "transaction": true
   }
