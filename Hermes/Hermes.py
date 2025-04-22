@@ -362,6 +362,8 @@ if __name__=="__main__":
             logger.info(f"OSC UE < call {args[0]}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
         elif verb=="call_generic":
             logger.info(f"OSC UE < call_generic {args}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
+        elif verb == "call_delegate":
+            logger.info(f"OSC UE < call_delegate {args}")  # \n\tk: {args[0]}\n\tv: {args[1:]}")
         else:
             logger.error(f"OSC UE unknown verb {verb}")
             return
@@ -370,7 +372,7 @@ if __name__=="__main__":
         msgFileArg = ""
         params = None
         if len(args) >= 1:
-            if verb == "call_generic":
+            if verb == "call_generic" or verb=="call_delegate":
                 cg_template = Template({"_object": args[0], "_function": args[1], "_transaction": True})
                 templates.append(cg_template)
                 args = args[2:]
@@ -381,7 +383,7 @@ if __name__=="__main__":
             if (len(args) % 2 != 0): logger.warning("OSC UE odd number of kv pairs, one will be dropped from var parsing")
             pairs = dict(zip(*[iter(args)] * 2))
             templates.append(Template(pairs))
-            if verb=="call_generic":
+            if verb=="call_generic" or verb=="call_delegate":
                 params = pairs
                 logger.debug(f"Call generic {cg_template} {params}")
             logger.debug(f"OSC UE parsing dynamic vars:{[str(t) for t in templates]}")
@@ -395,7 +397,9 @@ if __name__=="__main__":
                     msgfile = os.path.join(messageRoot, msgFileArg)
                 if verb=="call_generic":
                     msgfile = os.path.join(internalMessageRoot, "callGeneric")
-                if verb=="call" or verb=="call_generic":
+                if verb == "call_delegate":
+                    msgfile = os.path.join(internalMessageRoot, "callDelegate")
+                if verb=="call" or verb=="call_generic" or verb=="call_delegate":
                     if UE_JSON_PKG_PATH:
                         msgfile = msgfile.replace(".", os.sep)
                         if os.path.isdir(msgfile) and UE_JSON_PKG_PATH:

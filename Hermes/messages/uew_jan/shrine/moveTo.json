@@ -1,0 +1,17 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{BP_Shrine_Ensemble_Tracked}}",
+    "functionName": "SetActorLocation",
+    "parameters": {
+      "NewLocation": {
+        "X": "{{x}}",
+        "Y": "{{y}}",
+        "Z": "{{z}}"
+      },
+      "bSweep": true
+    },
+    "generateTransaction": true
+  }
+}
