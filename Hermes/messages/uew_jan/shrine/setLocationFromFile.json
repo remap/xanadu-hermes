@@ -1,0 +1,19 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{BP_Shrine_Ensemble_Tracked}}",
+    "functionName": "SetActorLocation",
+    "parameters": {
+      "NewLocation": {
+        "X": "{{_.Translation.X}}",
+        "Y": "{{_.Translation.Y}}",
+        "Z": "{{_.Translation.Z}}"
+      },
+      "bSweep": true
+    },
+    "generateTransaction": true
+  },
+  "externaldescription": "Cut-and-paste from GetActorTransform",
+  "externalParamFile": "{{file}}"
+}
