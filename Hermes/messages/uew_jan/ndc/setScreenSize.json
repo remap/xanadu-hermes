@@ -1,0 +1,15 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "SetScreenSize",
+    "parameters": {
+      "size": {
+        "X": "{{x}}",
+        "Y": "{{y}}"
+      }
+    },
+    "generateTransaction": true
+  }
+}

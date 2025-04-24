@@ -1,0 +1,16 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "setViewpointLocation",
+    "parameters": {
+      "location": {
+        "X": "{{x}}",
+        "Y": "{{y}}",
+        "Z": "{{z}}"
+      }
+    },
+    "generateTransaction": true
+  }
+}

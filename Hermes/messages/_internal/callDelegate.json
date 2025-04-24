@@ -1,0 +1,9 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{_object}}",
+    "functionName": "{{_function}}__DelegateSignature",
+    "generateTransaction": "{{_transaction}}"
+  }
+}

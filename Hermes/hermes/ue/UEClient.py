@@ -264,15 +264,20 @@ class UEClient:
             self.logger.error(f"world check failed! {sc} {result}")
             return sc
 
-    def getNameMap(self, dump=False, force=False, useGlobal=False):
+    def getNameMap(self, dump=False, force=False, useGlobal=False, usePIE=False):
         if self.mapNames==False and not force:
             self.logger.warning(f"---- Skipping name map load {self.instance}")
             return
         self.logger.info(f"----  Name map load to UE for {self.instance}")
         if useGlobal:
-            self.sendFromFile(os.path.join(self.internalMessageRoot, "dumpGlobalNameMap.json"),
-                                            suppressBodyPrint=True, applyTemplates=True, block=False,
-                                            callback=lambda future : self.processNameMap(future.result()[1],dump))
+            if not usePIE:
+                self.sendFromFile(os.path.join(self.internalMessageRoot, "dumpGlobalNameMap.json"),
+                                                suppressBodyPrint=True, applyTemplates=True, block=False,
+                                                callback=lambda future : self.processNameMap(future.result()[1],dump))
+            else:
+                self.sendFromFile(os.path.join(self.internalMessageRoot, "dumpGlobalNameMapPIE.json"),
+                                                suppressBodyPrint=True, applyTemplates=True, block=False,
+                                                callback=lambda future : self.processNameMap(future.result()[1],dump))
         else:
             self.sendFromFile(os.path.join(self.internalMessageRoot, "dumpActorNameMap.json"),
                                             suppressBodyPrint=True, applyTemplates=True, block=False,

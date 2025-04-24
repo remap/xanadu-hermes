@@ -1,0 +1,16 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{actor}}",
+    "functionName": "SetViewpointScale",
+    "parameters": {
+      "scale": {
+        "X": "{{x}}",
+        "Y": "{{y}}",
+        "Z": "{{z}}"
+      }
+    },
+    "generateTransaction": true
+  }
+}
