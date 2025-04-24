@@ -1,0 +1,10 @@
+{
+    "instance" : "xanadu",
+    "world" : "/PhoneDrawing/ML_Xanadu_Test.ML_Xanadu_Test",
+    "_world" : "/PhoneDrawing/ML_Xanadu_Test.ML_Xanadu_Test",
+    "prefix": "/PhoneDrawing/",
+    "_prefix": "/PhoneDrawing",
+    "_pie": "UEDPIE_0_",
+    "hermes_world" : "/PhoneDrawing/ML_Xanadu_Test.ML_Xanadu_Test:HermesWorldSubsystem_0",
+    "ndc" : "/Game/_Sets/Fall_24/ML_Xanadu_JB.ML_Xanadu_JB:PersistentLevel.NDC_7x540x1080_C_1"
+}

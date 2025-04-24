@@ -12,7 +12,7 @@ build/
 # PyCharm
 .idea/
 .venv/
-.venv3.12/
+venv3.12/
 
 .DS_Store
 
