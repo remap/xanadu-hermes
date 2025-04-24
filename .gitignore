@@ -4,6 +4,7 @@ xanadu-secret-*
 *backups/* 
 walker_ids.txt
 osceditor-persist.txt
+log/
 
 # Builds (pyinstaller)
 build/
