@@ -3,10 +3,7 @@
   "request": "/remote/object/call",
   "body": {
     "objectPath": "{{BP_Shrine_Ensemble_Tracked}}",
-    "functionName": "ShrineSetDrawingActive",
-    "parameters": {
-        "active":  "{{active}}"
-    },
+    "functionName": "ShrineDrawingClear",
     "generateTransaction": true
   }
 }
