@@ -1,0 +1,23 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{BP_Shrine_Ensemble_Tracked}}",
+    "functionName": "ShrineSetEyepointWorldLocationAndRotation",
+    "parameters": {
+      "NewLocation": {
+        "x": "{{x}}",
+        "y": "{{y}}",
+        "z": "{{z}}"
+      },
+      "NewRotation": {
+        "pitch": "{{pitch}}",
+        "yaw": "{{yaw}}",
+        "roll": "{{roll}}"
+      },
+      "UseLocation": "{{useLocation}}",
+      "UseRotation": "{{useRotation}}"
+    }
+  },
+  "generateTransaction": true
+}

@@ -1,0 +1,17 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{BP_Shrine_Ensemble_Tracked}}",
+    "functionName": "ShrineSetIndividualEyepointRotation",
+    "parameters": {
+        "index": "{{shrine}}",
+        "NewRotation": {
+          "pitch": "{{pitch}}",
+          "yaw": "{{yaw}}",
+          "roll": "{{roll}}"
+        }
+    },
+    "generateTransaction": true
+  }
+}
