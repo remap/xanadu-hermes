@@ -17,6 +17,7 @@ def to_namespace(d):
     return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
 import boto3
 import pathlib
+import shutil
 from datetime import datetime
 import random, string
 import jsonpickle
@@ -37,6 +38,7 @@ class UploadableCollection:
         self.module = module
         self.path = file_path
         self.rel_path = rel_path
+        self.collection_root = self.rel_path.parts[0]
         self.name = f"{file_path} => "
         self.files = {}
         self.metadata_file = None
@@ -112,13 +114,29 @@ class UploadableCollection:
                                                              s3_unique_name=self.metadata_file_for_notify,
                                                              mimetype="application/json", have=False, uploaded=False,
                                                              uploading=False, filetype="meta")
+
         self.media_files_for_notify = {}
         for file in self.module.config.media_files:
             self.media_files_for_notify[ file["name"] ] = f'{self.s3_unique_prefix}-{file["name"]}'
-            self.files[ file["name"] ] = dict(path=self.path / Path(file["name"]),
+
+            path = self.path / Path(file["name"])
+            have = False
+            if "local" in file:
+                localpath = Path(jinja2.Template(str(self.path / file["local"])).render(**{"collection_parent":self.collection_root})).resolve()  # TODO: more consistent templating
+                if localpath.exists():
+                    self.logger.info(f"Copying existing local file for {file['name']}: {localpath}")
+                    shutil.copy(localpath,path)
+                    have = True
+                else:
+                    self.logger.error(f"Can't find local file for {file['name']}: {localpath}")
+                    have = False
+
+
+            self.files[ file["name"] ] = dict(path=path,
                                               s3_unique_name=f'{self.s3_unique_prefix}-{file["name"]}',
                                               mimetype=file["mimetype"],
-                                              have=False, uploaded=False, uploading=False, filetype="media")
+                                              have=have, uploaded=False, uploading=False, filetype="media")
+            self.logger.debug(self.files[ file["name"] ])
 
             uri_key = file["name"].replace('.','_')  #aws services compat
             self.input_uris[uri_key] = Path(self.input_uri_base) / self.rel_path / file["name"]
@@ -139,6 +157,7 @@ class UploadableCollection:
         return all(x["uploaded"] for x in self.files.values())
 
     def reset_counters(self):
+        self.logger.info(f"Resetting collection counters after upload: {self.rel_path}")
         self.import_module()
 
     def check_new_file(self, file_path):

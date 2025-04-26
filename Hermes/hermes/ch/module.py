@@ -238,9 +238,14 @@ class GenAIModuleRemote:
         p = f.replace("-metadata.json", "")
         return p
 
+
+#### TODO : This is a hack!  Requires knowledge of the depth of the file structure
+
     def get_collection_key(self, p):
+        depth = self.config.ue.require_depth
         c = self.get_unique_id(p)
-        return Path("/".join(c.split("-")[:3]))  # key is posix path
+        k= Path("/".join(c.split("-")[:depth]))  # key is posix path
+        return k
 
     # File downloading
     #
@@ -313,7 +318,7 @@ class GenAIModuleRemote:
                 raise ValueError(f"Invalid S3 ARN: {arn}") from e
             file_path = Path(s3key)
             metadata = msg.get("next_metadata")
-            collection_key = Path("/".join([metadata["group"],metadata["user"], metadata["trial"]])) # Gotta fix this use of path
+            collection_key = Path("/".join([metadata["group"], metadata["trial"]])) # TODO:  400Gotta fix this use of path
             tasks.append(new_loop.create_task(self.download_from_s3(bucket, s3key, filekey, output_dir / file_path.name, collection_key)))
 
         gather_future = asyncio.gather(*tasks)

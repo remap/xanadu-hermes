@@ -36,17 +36,17 @@ DEBOUNCE_SEC = 1
 # Configure the instance
 # TODO: Change to arguments?
 instance = "jb_testing"
-environment = SimpleNamespace()
-environment.name = "dev"
-environment.config_prefix = f"{environment.name}-"
-environment.module_config_dir = f"{environment.name}/"
+# environment = SimpleNamespace()
+# environment.name = "dev"
+# environment.config_prefix = f"{environment.name}-"
+# environment.module_config_dir = f"{environment.name}/"
 
 
 # Logger
 path = Path("logconfig-ch.json")
 with path.open("r", encoding="utf-8") as f:
     logconfig = json.load(f)
-logconfig["handlers"]["file"]["filename"] = f"log/{environment.config_prefix}HermesCh.log"
+logconfig["handlers"]["file"]["filename"] = f"log/{instance}-HermesCh.log"
 logging.config.dictConfig(logconfig)
 logger = logging.getLogger("main")
 logger.setLevel(logging.DEBUG)
@@ -171,19 +171,19 @@ if __name__ == "__main__":
 
     ## Config data is configured per module
     logger.info(f"Hermes Ch Instance: {instance}")
-    remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/modules/{instance}/{environment.config_prefix}config-common.json",
-                                  module_dir=f"ch/modules/{instance}", module_config_filename=f"{environment.module_config_dir}config.json")
+    remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/{instance}/config-common.json",
+                                  module_dir=f"ch/{instance}", module_config_filename=f"config.json")
 
     # TODO MOVE URI BASE OUT
     for module_name, remote in remotes.items():
         remote.load_dynamic({})
 
-        remote.output_uri_base = f"/output/{module_name}/"
+        remote.output_uri_base = f"/{module_name}/out"
         os.makedirs(remote.media_output_dir, exist_ok=True)
         logger.info(f"Web server publishing {remote.output_uri_base} from {remote.media_output_dir}")
         server.app.mount(remote.output_uri_base, StaticFiles(directory=remote.media_output_dir, html=True), name=f"static_{module_name}")
 
-        remote.input_uri_base = f"/input/{module_name}/"
+        remote.input_uri_base = f"/{module_name}/in"
         os.makedirs(remote.watch_path, exist_ok=True)
         logger.info(f"Web server publishing {remote.input_uri_base} from {remote.watch_path}")
         server.app.mount(remote.input_uri_base, StaticFiles(directory=remote.watch_path, html=True), name=f"static_{module_name}")
