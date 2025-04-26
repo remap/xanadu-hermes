@@ -10,6 +10,20 @@
     "user": "{{p[-2]}}",
     "group": "{{p[-3]}}",
     "tags": "{{tags}}",
+    "params": {
+           "preprocess":  { },
+           "inference":   { },
+           "postprocess": { }
+     },
+    "fallback_arns": {
+           "melpomene" : "",
+           "calliope" : "",
+           "thalia" : "",
+           "euterpe" : "",
+           "terpsicore" : "",
+           "erato" : "",
+           "kira" : ""},
+    "pipeline": "ch1",
     "mimetype": "{{mimetype}}",
     "timestamp": "{{timestamp}}"
 }

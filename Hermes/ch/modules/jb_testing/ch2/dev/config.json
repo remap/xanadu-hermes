@@ -12,8 +12,19 @@
       "mimetype": "image/png"
     },
     {
-      "name": "sketch.png",
+      "name": "garment_sketch.png",
       "mimetype": "image/png"
+    },
+    {
+      "name": "garment_sketch.exr",
+      "mimetype": "image/exr"
+    },    {
+      "name": "pose_sketch.png",
+      "mimetype": "image/png"
+    },
+    {
+      "name": "pose_sketch.exr",
+      "mimetype": "image/exr"
     }
   ],
     "input_preview_key" : "sketch_png",

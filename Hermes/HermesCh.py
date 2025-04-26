@@ -22,6 +22,7 @@ import jsonpickle
 from hermes.fb.anonclient import FBAnonClient
 from types import SimpleNamespace
 
+
 port_web = 4243
 static_web_dir = "ch/web"
 
@@ -61,6 +62,7 @@ class EmbeddedFastAPIServer:
         self.app.add_middleware(
             TrustedHostMiddleware, allowed_hosts=["127.0.0.1"]
         )
+
         self.host = host
         self.port = port
         self.server_thread = None
@@ -179,12 +181,12 @@ if __name__ == "__main__":
         remote.output_uri_base = f"/output/{module_name}/"
         os.makedirs(remote.media_output_dir, exist_ok=True)
         logger.info(f"Web server publishing {remote.output_uri_base} from {remote.media_output_dir}")
-        server.app.mount(remote.output_uri_base, StaticFiles(directory=remote.media_output_dir), name=f"static_{module_name}")
+        server.app.mount(remote.output_uri_base, StaticFiles(directory=remote.media_output_dir, html=True), name=f"static_{module_name}")
 
         remote.input_uri_base = f"/input/{module_name}/"
         os.makedirs(remote.watch_path, exist_ok=True)
         logger.info(f"Web server publishing {remote.input_uri_base} from {remote.watch_path}")
-        server.app.mount(remote.input_uri_base, StaticFiles(directory=remote.watch_path), name=f"static_{module_name}")
+        server.app.mount(remote.input_uri_base, StaticFiles(directory=remote.watch_path, html=True), name=f"static_{module_name}")
 
 
 

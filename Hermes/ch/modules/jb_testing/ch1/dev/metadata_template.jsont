@@ -15,7 +15,14 @@
            "inference":   { },
            "postprocess": { }
      },
-    "fallback_arns": { },
+    "fallback_arns": {
+           "melpomene" : "",
+           "calliope" : "",
+           "thalia" : "",
+           "euterpe" : "",
+           "terpsicore" : "",
+           "erato" : "",
+           "kira" : ""},
     "pipeline": "ch1",
     "mimetype": "{{mimetype}}",
     "timestamp": "{{timestamp}}"

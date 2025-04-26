@@ -14,6 +14,10 @@
     {
       "name": "style.png",
       "mimetype": "image/png"
+    },
+    {
+      "name": "content.exr",
+      "mimetype": "image/exr"
     }
   ],
   "input_preview_key" : "content_png",
