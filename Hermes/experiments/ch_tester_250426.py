@@ -11,7 +11,7 @@ import datetime
 import glob
 root = Path("../ch/jb_testing")
 
-modules = ["ch1", "ch2", "ch2-siren", "ch3"]
+modules =  ["ch3"]
 
 muses = ["melpomene",
          "calliope",
@@ -27,9 +27,7 @@ def pick_random_exr(folder_path):
     if not exr_files: raise FileNotFoundError(f"No .exr files found in {folder_path!r}")
     return random.choice(exr_files)
 
-
-
-n = 15
+n = 15   # delay in seconds
 doCopy = True
 while True:
 
@@ -46,11 +44,14 @@ while True:
     print(module, run)
     for muse in muses:
         source = root / module / "sample_input" / muse
-        dest = root / module / "in" / muse / run / "sketch.exr"
+        dest = root / module / "in" / muse / run
         file = pick_random_exr(source)
         os.makedirs(dest, exist_ok=True)
         print(f"copy {file} to {dest}")
-        if doCopy: shutil.copy(file, dest  )
+        if doCopy: shutil.copyfile(file, dest / "sketch.exr" )
 
     print(f'pausing {n} seconds')
     time.sleep(n)
+
+
+
