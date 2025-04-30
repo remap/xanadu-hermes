@@ -28,5 +28,6 @@
   ],
   "input_preview_key": "sketch_png",
   "preview_key": "output_png",
+  "output_key": "output_png",
   "metadata_file": "metadata.json"
 }

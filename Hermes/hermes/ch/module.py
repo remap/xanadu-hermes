@@ -43,7 +43,7 @@ jsonpickle.handlers.register(pathlib.PosixPath, PosixPathHandler)
 def to_namespace(d):
     return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
 
-
+WATCHFILES_FORCE_POLLING=False
 TIME_STRING_FORMAT = "%Y-%m-%dT%H:%M:%S"
 log_file_watch_detail = False
 
@@ -52,7 +52,7 @@ uc_status_init = {
     "last_notify": "",
     "failure": False,
     "msg_detail": "",
-    "outputs" : []
+    "outputs": []
 }
 
 
@@ -74,7 +74,8 @@ class GenAIModuleRemote:
     listener = None
     monitor_task = None
 
-    def __init__(self, s3, sqs, sns, config_file: str, config_common_file: str = None, base_dir='.', firebase = None, logger=None):
+    def __init__(self, s3, sqs, sns, config_file: str, config_common_file: str = None, base_dir='.', firebase=None,
+                 logger=None):
         # Get AWS clients from above so we don't have to control credentials here
         self.s3 = s3
         self.sqs = sqs
@@ -90,8 +91,6 @@ class GenAIModuleRemote:
         self.dynamic_vars = {}  # dict version
         self.dynamic = None  # Becomes simplenamespace of dynamic_vars
         self.firebase = firebase
-
-
 
         # Read config files
         ## config_common_file :  Common configuration file across all modules(optional), which can be overridden
@@ -119,8 +118,6 @@ class GenAIModuleRemote:
         # Now that we've loaded the name, set up logger
         self.name = self.config.module
 
-
-
         class PrefixAdapter(logging.LoggerAdapter):
             def process(self, msg, kwargs):
                 module = self.extra.get("module", "")
@@ -134,14 +131,14 @@ class GenAIModuleRemote:
 
         watch_path = Path(self.base_dir / self.config.ue.media_watch_dir)
         self.watch_path = watch_path
-        #print(self.watch_path)
+        # print(self.watch_path)
 
         # web preview
         self.output_uri_base = ""
-        self.input_uri_base =""
+        self.input_uri_base = ""
+        self.webserver = ""
         self.preview_key = self.config.preview_key
         self.input_preview_key = self.config.input_preview_key
-
 
         # firebase
         self.notify_key = "/".join([self.config.firebase.notify_key, self.name])
@@ -152,6 +149,8 @@ class GenAIModuleRemote:
         self.logger.info(f"Firebase cue (approved to display) {self.cue_key}")
         self.logger.debug(f"Deleting firebase key {self.cue_key}")
         self.firebase.delete_async(self.config.firebase.cue_key, self.name)
+
+        #self.firebase_notify_uris = {}
 
         ## Setup SQS notifier callback for end of inference
         self.notifier = SQSNotifier(self.sqs, self.sns, self.config.sqs.notify_queue_name,
@@ -166,12 +165,13 @@ class GenAIModuleRemote:
 
         GenAIModuleRemote.listener.add_callback(self.name, self.listen_callback)
 
-    def pulse_cue(self, collection_key : Path):  #cast?
+    def pulse_cue(self, collection_key: Path):  # cast?
         # notify
         # then reset value
         if not collection_key in self.uploadable_collections:
-            self.logger.error(f"Error in pulse_cue call, collection {str(collection_key)} not found in module {self.name}")
-            return { "code" : 500, "description" :"no such collection"}
+            self.logger.error(
+                f"Error in pulse_cue call, collection {str(collection_key)} not found in module {self.name}")
+            return {"code": 500, "description": "no such collection"}
         if self.firebase is None:
             self.logger.error(f"No firebase object", exc_info=True)
             return {"code": 500, "description": "no firebase"}
@@ -180,30 +180,45 @@ class GenAIModuleRemote:
             rc = 200
             if self.uploadable_collections[collection_key].approved:
                 self.logger.warning(f"Firing APPROVED generated media cue for {self.name} {str(collection_key)}")
+                msg = {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT),
+                                                   "module": self.name,
+                                                   "group": collection_key.parts[0],
+                                                   "cue": "SHOW_MEDIA",
+                       "cue_media": self.uploadable_collections[
+                           collection_key].firebase_notify_uris[self.config.output_key],
+                "files": self.uploadable_collections[
+                                                      collection_key].firebase_notify_uris}
                 result = self.firebase.post_async("/".join([self.cue_key, str(collection_key)]),
-                                                      {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT),
-                                                       "cue": "SHOW_MEDIA", "files": self.uploadable_collections[collection_key].firebase_notify_files},
-                                                      callback=lambda result: self.logger.debug(
-                                                          f"firebase post to {self.config.firebase.cue_key} for {collection_key}"))
-            else:
-                self.logger.warning(f"Firing FALLBACK media cue for {self.name} {str(collection_key)}")
-                result = self.firebase.post_async("/".join([self.cue_key, str(collection_key)]),
-                                                  {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT),
-                                                   "cue": "SHOW_MEDIA", "files": self.uploadable_collections[collection_key].firebase_notify_files},
+                                                  msg,
                                                   callback=lambda result: self.logger.debug(
-                                                      f"firebase post to {self.config.firebase.cue_key} for {collection_key}"))
+                                                      f"firebase post to {self.config.firebase.cue_key} for {collection_key}: {msg}"))
+            else:
+                self.logger.warning(f"Firing FALLBACK media cue for {self.name} {collection_key}")
+                msg = {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT),
+                                                   "module": self.name,
+                                                   "group": collection_key.parts[0],
+                                                   "cue": "SHOW_MEDIA",
+                       "cue_media": self.uploadable_collections[
+                           collection_key].firebase_notify_uris[self.config.output_key],
+                       "files": self.uploadable_collections[
+                                                      collection_key].firebase_notify_uris}
+                result = self.firebase.post_async("/".join([self.cue_key, str(collection_key)]),
+                                                  msg,
+                                                  callback=lambda result: self.logger.debug(
+                                                      f"firebase post to {self.config.firebase.cue_key} for {collection_key}: {msg}"))
 
         except:
             self.logger.error(f"Error in pulse_cue call", exc_info=True)
             rc = 500
-        return { "code" : rc, "description": "posted async cue" }
+        return {"code": rc, "description": "posted async cue"}
 
-    def approve(self, collection_key : Path ):
-        #update
+    def approve(self, collection_key: Path):
+        # update
         # then reset value
         if not collection_key in self.uploadable_collections:
-            self.logger.error(f"Error in approve call, collection {str(collection_key)} not found in module {self.name}")
-            return { "code" : 500, "description" :"no such collection"}
+            self.logger.error(
+                f"Error in approve call, collection {str(collection_key)} not found in module {self.name}")
+            return {"code": 500, "description": "no such collection"}
 
         try:
             self.uploadable_collections[collection_key].approved = True
@@ -211,7 +226,7 @@ class GenAIModuleRemote:
         except:
             self.logger.error(f"Error in approve call", exc_info=True)
             rc = 500
-        return { "code" : rc }
+        return {"code": rc}
 
     def to_summary(self):
         s = {}
@@ -238,13 +253,12 @@ class GenAIModuleRemote:
         p = f.replace("-metadata.json", "")
         return p
 
-
-#### TODO : This is a hack!  Requires knowledge of the depth of the file structure
+    #### TODO : This is a hack!  Requires knowledge of the depth of the file structure
 
     def get_collection_key(self, p):
         depth = self.config.ue.require_depth
         c = self.get_unique_id(p)
-        k= Path("/".join(c.split("-")[:depth]))  # key is posix path
+        k = Path("/".join(c.split("-")[:depth]))  # key is posix path
         return k
 
     # File downloading
@@ -269,13 +283,17 @@ class GenAIModuleRemote:
             if key in self.uploadable_collections_status:
                 self.uploadable_collections_status[key]["failure"] = True
             if self.firebase is not None:
-                result = self.firebase.post_async("/".join([self.notify_key, str(key)]),
-                                                  {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT),
+                msg = {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT),
                                                    "status": "failure",
-                                                   "files": {}}, params={'print': 'pretty'},
+                                                   "module": self.name,
+                                                   "group": key.parts[0],
+                                                   "files": {}}
+                result = self.firebase.post_async("/".join([self.notify_key, str(key)]),
+                                                  msg,
+                                                  params={'print': 'pretty'},
                                                   headers={'X_FANCY_HEADER': 'VERY FANCY'},
                                                   callback=lambda result: self.logger.info(
-                                                      f"firebase post of failure to {self.config.firebase.notify_key} for {key}"))
+                                                      f"firebase post of failure to {self.config.firebase.notify_key} for {key}: {msg}"))
             return
         if "next_metadata" not in msg:
             self.logger.error(f"Incoming message had no next_metadata: {msg}")
@@ -308,8 +326,9 @@ class GenAIModuleRemote:
         new_loop = asyncio.new_event_loop()
         tasks = list()
         # TODO: Hacky for metadata
-        arns = msg.get("media_arns") | {"metadata.json": msg.get("metadata_arn")}  #list(msg.get("media_arns").values())
-        #arns.append(msg.get("metadata_arn"))
+        arns = msg.get("media_arns") | {
+            "metadata.json": msg.get("metadata_arn")}  # list(msg.get("media_arns").values())
+        # arns.append(msg.get("metadata_arn"))
         for filekey, arn in arns.items():  # ToDo: name collision possibility, at least theoretically
             try:
                 resource = arn.split(":", 5)[-1]
@@ -318,38 +337,47 @@ class GenAIModuleRemote:
                 raise ValueError(f"Invalid S3 ARN: {arn}") from e
             file_path = Path(s3key)
             metadata = msg.get("next_metadata")
-            collection_key = Path("/".join([metadata["group"], metadata["trial"]])) # TODO:  400Gotta fix this use of path
-            tasks.append(new_loop.create_task(self.download_from_s3(bucket, s3key, filekey, output_dir / file_path.name, collection_key)))
+            collection_key = Path(
+                "/".join([metadata["group"], metadata["trial"]]))  # TODO:  400Gotta fix this use of path
+            tasks.append(new_loop.create_task(
+                self.download_from_s3(bucket, s3key, filekey, output_dir / file_path.name, collection_key)))
 
         gather_future = asyncio.gather(*tasks)
-        gather_future.add_done_callback(lambda fut: self.download_complete(fut, key ))
+        gather_future.add_done_callback(lambda fut: self.download_complete(fut, key))
         new_loop.run_until_complete(gather_future)
         new_loop.close()
 
-    def download_complete(self, future, collection_key):
+    def download_complete(self, future, collection_key : Path):
         files = {}
         uris = {}
+        fquris = {}
+        self.uploadable_collections[collection_key].firebase_notify_uris = {}
         for f in future.result():
-            for k,v in f.items():
-                nk = k.replace(".","_")
-                files[nk] = v   # firebase doesn't support periods in keys.
-                uris[nk] = Path(self.output_uri_base) / Path(v).relative_to(Path(self.media_output_dir).resolve())
-
+            for k, v in f.items():
+                nk = k.replace(".", "_")
+                files[nk] = v  # firebase doesn't support periods in keys.
+                #print(self.output_uri_base)
+                uris[nk] = str(Path(self.output_uri_base) / Path(v).relative_to(Path(self.media_output_dir).resolve()))
+                fquris[nk] = self.webserver+uris[nk]
         self.logger.info(f"COMPLETE for {collection_key} results: {json.dumps(files)}")
 
         self.uploadable_collections[collection_key].output_uris = uris
-        self.uploadable_collections[collection_key].output_uris = uris
+        self.uploadable_collections[collection_key].firebase_notify_uris = fquris
 
         self.uploadable_collections[collection_key].firebase_notify_files = files
 
+
         if self.firebase is not None:
-            result = self.firebase.post_async("/".join([self.notify_key,str(collection_key)]), {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT), "status" : "success", "files" : files },
-                                         callback=lambda result: self.logger.debug(f"firebase post to {self.config.firebase.notify_key} for {collection_key}"))
+            result = self.firebase.post_async("/".join([self.notify_key, str(collection_key)]),
+                                              {"timestamp": datetime.now().strftime(TIME_STRING_FORMAT),
+                                               "status": "success",
+                                               "module": self.name,
+                                               "group": collection_key.parts[0], #collection_key.split("/")[0],
+                                               "files": files},
+                                              callback=lambda result: self.logger.debug(
+                                                  f"firebase post to {self.config.firebase.notify_key} for {collection_key}"))
 
-
-
-
-    async def download_from_s3(self, bucket, s3key, filekey, file_path: Path,collection_key, notifier=None) -> None:
+    async def download_from_s3(self, bucket, s3key, filekey, file_path: Path, collection_key, notifier=None) -> None:
         file_path = Path(file_path)
         filename = file_path.name  # os.path.basename(file_path)
         self.logger.debug(f"Downloading {s3key} from bucket {bucket} to {file_path} ...")
@@ -359,9 +387,10 @@ class GenAIModuleRemote:
 
             self.uploadable_collections_status[collection_key]["outputs"].append(file_path.resolve().as_uri())
         except Exception as err:
-            self.logger.error(f"Error downloading {s3key} from bucket {bucket} to {file_path.resolve()}: {err}", exc_info=True)
+            self.logger.error(f"Error downloading {s3key} from bucket {bucket} to {file_path.resolve()}: {err}",
+                              exc_info=True)
             return None
-        return {filekey : str(file_path.resolve())}
+        return {filekey: str(file_path.resolve())}
 
     def load_dynamic(self, dynamic_vars: dict, merge=False):
         if merge:
@@ -443,7 +472,8 @@ class GenAIModuleRemote:
                         self.uploadable_collections[rel_path] = UploadableCollection(self.s3, self, file_path, rel_path,
                                                                                      self.metadatawriter,
                                                                                      self.fileactions,
-                                                                                     self.logger, self.notifier, input_uri_base = self.input_uri_base)
+                                                                                     self.logger, self.notifier,
+                                                                                     input_uri_base=self.input_uri_base)
                         self.uploadable_collections_status[rel_path] = uc_status_init.copy()
                     else:
                         pass  # silently ignore paths that aren't deep enough.
@@ -460,7 +490,8 @@ class GenAIModuleRemote:
                                                                                             self.metadatawriter,
                                                                                             self.fileactions,
                                                                                             self.logger,
-                                                                                            self.notifier, input_uri_base = self.input_uri_base)
+                                                                                            self.notifier,
+                                                                                            input_uri_base=self.input_uri_base)
                         self.uploadable_collections_status[rel_path.parent] = uc_status_init.copy()
                 self.logger.debug(f"Checking if UploadableCollections need new file {file_path}")
                 for key, collection in self.uploadable_collections.items():
@@ -469,7 +500,7 @@ class GenAIModuleRemote:
                             self.logger.debug(f"Hit UploadableCollection {key}")
                             # if collection.ready_to_upload():
                             # self.logger.info(f"Ready to upload UploadableCollection {key}")
-                            self.uploadable_collections_status[key]["phase"]="uploading"
+                            self.uploadable_collections_status[key]["phase"] = "uploading"
                             collection.upload_if_ready()
                 return
             else:
@@ -484,7 +515,7 @@ class GenAIModuleRemote:
             del self.uploadable_collections[rel_path]
 
     async def watch_directory(self) -> None:
-        watch_path=self.watch_path
+        watch_path = self.watch_path
         """Watch the directory for new files and upload them."""
         self.logger.info(f"Watching {self.watch_path.resolve()}, with output dir {self.output_dir.resolve()}")
         debounce_list = {}
@@ -495,7 +526,7 @@ class GenAIModuleRemote:
             GenAIModuleRemote.monitor_task = asyncio.create_task(asyncio.to_thread(GenAIModuleRemote.listener.monitor))
         self.loop = asyncio.get_running_loop()
 
-        async for changes in awatch(watch_path):
+        async for changes in awatch(watch_path, force_polling=WATCHFILES_FORCE_POLLING):
             for change, file_path in changes:
                 file_path = Path(file_path)
                 rel_path = file_path.relative_to(watch_path.resolve())

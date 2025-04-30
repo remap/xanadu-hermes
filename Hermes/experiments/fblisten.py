@@ -19,7 +19,7 @@ firebase_admin.initialize_app(cred, {
 
 # https://console.firebase.google.com/u/0/project/xanadu-f5762/database/xanadu-f5762-default-rtdb/data
 # Reference the database path to monitor
-listenPath = "/xanadu/test"
+listenPath = "/dev-xanadu/ch/cue"
 ref = db.reference(listenPath)
 
 # Listen for data changes

@@ -21,10 +21,18 @@ import os
 import jsonpickle
 from hermes.fb.anonclient import FBAnonClient
 from types import SimpleNamespace
+import socket
+
+def get_primary_ip():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        try:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+        except OSError:
+            return None
 
 
 port_web = 4243
-static_web_dir = "ch/web"
 
 # modules
 remotes = {}
@@ -35,6 +43,10 @@ DEBOUNCE_SEC = 1
 
 # Configure the instance
 # TODO: Change to arguments?
+#root_dir = "/Volumes/ch-live-agouti/"  #"./ch"
+root_dir = "./ch/"
+static_web_dir = f"ch/web"
+web_server = f"http://{get_primary_ip()}:{port_web}"
 instance = "jb_testing"
 # environment = SimpleNamespace()
 # environment.name = "dev"
@@ -56,11 +68,11 @@ uvicorn_logger = logger
 
 
 class EmbeddedFastAPIServer:
-    def __init__(self, host="127.0.0.1", port=port_web, logger=None):
+    def __init__(self, host="0.0.0.0", port=port_web, logger=None):
         self.logger = logger
         self.app = FastAPI()
         self.app.add_middleware(
-            TrustedHostMiddleware, allowed_hosts=["127.0.0.1"]
+            TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "0.0.0.0", "*"]  #TODO: Close ?
         )
 
         self.host = host
@@ -125,8 +137,10 @@ class EmbeddedFastAPIServer:
 
 if __name__ == "__main__":
 
+    logger.warning("Remember to set WATCHFILES_FORCE_POLLING based on your file system provider type.")
+
     # Create the server instance
-    server = EmbeddedFastAPIServer(host="127.0.0.1", port=port_web, logger=logger)
+    server = EmbeddedFastAPIServer(host="0.0.0.0", port=port_web, logger=logger)
 
 
 
@@ -170,22 +184,23 @@ if __name__ == "__main__":
 
 
     ## Config data is configured per module
+
     logger.info(f"Hermes Ch Instance: {instance}")
     remotes = load_remote_configs(s3=s3, sqs=sqs, sns=sns, common_config=f"ch/{instance}/config-common.json",
-                                  module_dir=f"ch/{instance}", module_config_filename=f"config.json")
+                                  module_dir=f"{root_dir}/{instance}", module_config_filename=f"config.json")
 
     # TODO MOVE URI BASE OUT
     for module_name, remote in remotes.items():
         remote.load_dynamic({})
-
+        remote.webserver = web_server
         remote.output_uri_base = f"/{module_name}/out"
         os.makedirs(remote.media_output_dir, exist_ok=True)
-        logger.info(f"Web server publishing {remote.output_uri_base} from {remote.media_output_dir}")
+        logger.info(f"Web server publishing {web_server}{remote.output_uri_base} from {remote.output_uri_base}")
         server.app.mount(remote.output_uri_base, StaticFiles(directory=remote.media_output_dir, html=True), name=f"static_{module_name}")
 
         remote.input_uri_base = f"/{module_name}/in"
         os.makedirs(remote.watch_path, exist_ok=True)
-        logger.info(f"Web server publishing {remote.input_uri_base} from {remote.watch_path}")
+        logger.info(f"Web server publishing {web_server}{remote.input_uri_base} from {remote.watch_path}")
         server.app.mount(remote.input_uri_base, StaticFiles(directory=remote.watch_path, html=True), name=f"static_{module_name}")
 
 

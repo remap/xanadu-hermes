@@ -23,5 +23,6 @@
   ],
   "input_preview_key" : "sketch_png",
     "preview_key": "sd35_image_png",
+  "output_key" : "mesh_glb",
   "metadata_file": "metadata.json"
 }
