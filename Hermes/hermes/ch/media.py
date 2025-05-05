@@ -18,11 +18,13 @@ async def convert_exr_to_png(filepath_in, filepath_out):
         command = [
             "magick",
             filepath_in,
-            "-alpha", "off",
+            "-flatten",
+            "-background", '#404040',
             "-colorspace", "sRGB",
+            "-rotate", "90",
             "-gamma", "2.2",
             "-sigmoidal-contrast", "5x50%",
-            "-resize", "512x512>",
+            "-resize", "512x384>",
             "png:"+str(temp_filename)
         ]
         # Run the command and capture output

@@ -64,13 +64,13 @@ if __name__=="__main__":
     # todo: move to config
     default_listeners = [
         {"addr": "/dev-xanadu/ch/cue/ch1",
-         "args": ["listenForCh1"]},
+         "args": "listenForCh1"},
         {"addr": "/dev-xanadu/ch/cue/ch2",
-         "args": ["listenForCh2"]},
+         "args": "listenForCh2"},
         {"addr": "/dev-xanadu/ch/cue/ch2-siren",
-         "args": ["listenForCh2-siren"]},
+         "args": "listenForCh2-siren"},
         {"addr": "/dev-xanadu/ch/cue/ch3",
-         "args": ["listenForCh3"]}
+         "args": "listenForCh3"}
     ]
 
     ## OSC

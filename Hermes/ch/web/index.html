@@ -222,7 +222,8 @@ function customApprovalFormatter(cell, formatterParams, onRendered) {
         layout: "fitData",
         columns: tableColumns,
         pagination: "local",
-        paginationSize: 50
+        paginationSize: 50,
+        index: "collection"
     });
 
     table.on("rowContext",
@@ -293,10 +294,11 @@ function customApprovalFormatter(cell, formatterParams, onRendered) {
 
             // table.replaceData(rows);
 
-            const scrollPos = window.pageYOffset;
-            table.replaceData(rows).then(() => {
+            //const scrollPos = window.pageYOffset;
+            table.updateOrAddData(rows);
+                /*.then(() => {
                 window.scrollTo(0, scrollPos);
-            });
+            });*/
 
 
             output.textContent = new Date().toLocaleTimeString() + " Poll for status successful.";

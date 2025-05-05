@@ -2,7 +2,7 @@
   "parsing": {"type": "external_params"},
   "action": {
     "type": "unreal",
-    "target": ["ed","pie"],
+    "target": ["ndc"],
     "data": {
       "request": "/remote/object/call",
       "body": {

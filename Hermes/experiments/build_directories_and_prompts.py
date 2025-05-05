@@ -7,7 +7,7 @@ from quickdraw import QuickDrawData
 import subprocess
 import tempfile
 
-root = Path("../ch/jb_testing")
+root = Path("/Volumes/ch-live-gaia/jb_testing")
 
 modules = ["ch1", "ch2", "ch2-siren", "ch3"]
 

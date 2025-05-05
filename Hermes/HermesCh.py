@@ -43,8 +43,8 @@ DEBOUNCE_SEC = 1
 
 # Configure the instance
 # TODO: Change to arguments?
-#root_dir = "/Volumes/ch-live-agouti/"  #"./ch"
-root_dir = "./ch/"
+root_dir = "/Volumes/ch-live-gaia/"  #"./ch"
+#root_dir = "./ch/"
 static_web_dir = f"ch/web"
 web_server = f"http://{get_primary_ip()}:{port_web}"
 instance = "jb_testing"
