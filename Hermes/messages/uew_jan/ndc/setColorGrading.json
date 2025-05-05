@@ -1,0 +1,37 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{NDC_7x800x1400_Camera}}",
+    "functionName": "SetColorGrading",
+    "parameters": {
+      "Camera Number": "{{shrine}}",
+      "Saturation": {
+        "X": "{{saturation}}",
+        "Y": "{{saturation}}",
+        "Z": "{{saturation}}",
+        "W": "1"
+      },
+      "Gamma": {
+        "X": "{{gamma}}",
+        "Y": "{{gamma}}",
+        "Z": "{{gamma}}",
+        "W": "1"
+      },
+      "Gain": {
+        "X": "{{gain}}",
+        "Y": "{{gain}}",
+        "Z": "{{gain}}",
+        "W": "1"
+      },
+      "Scene Color Tint": {
+        "R": "{{tR}}",
+        "G": "{{tG}}",
+        "B": "{{tB}}",
+        "A": "{{tA}}"
+      }
+    }
+  },
+  "generateTransaction": true
+}
+
