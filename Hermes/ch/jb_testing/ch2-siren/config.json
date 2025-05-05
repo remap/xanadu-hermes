@@ -1,0 +1,33 @@
+{
+  "module": "ch2-siren",
+  "description": "Chrysopoeia 2 Siren",
+  "candidates_to_generate": 1,
+  "pipeline": {
+    "name": "",
+    "start_phase": "preprocess"
+  },
+  "media_files": [
+    {
+      "name": "muse.png",
+      "mimetype": "image/png",
+      "local": "../../../prompt/{{collection_parent}}/muse.png"
+    },
+    {
+      "name": "garment_sketch.png",
+      "mimetype": "image/png",
+      "local": "../../../prompt/{{collection_parent}}/garment_sketch.png"
+    },
+    {
+      "name": "sketch.png",
+      "mimetype": "image/png"
+    },
+    {
+      "name": "sketch.exr",
+      "mimetype": "image/exr"
+    }
+  ],
+  "input_preview_key": "sketch_png",
+  "preview_key": "output_png",
+  "output_key": "output_png",
+  "metadata_file": "metadata.json"
+}

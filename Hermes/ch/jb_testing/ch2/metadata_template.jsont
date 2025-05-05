@@ -1,0 +1,29 @@
+{% set p = metadata_local_path.split('/') %}
+{   "media_file": "{{media_files}}",
+    "metadata_file": "{{metadata_file}}",
+    "input_bucket": "{{config.s3.input_bucket}}",
+    "output_bucket": "{{config.s3.output_bucket}}",
+    "instance": "{{config.instance}}",
+    "target_environment":  "{{config.target_environment}}",
+     "module": "{{ config.module }}",
+    "trial": "{{p[-1]}}",
+    "user" : "",
+    "group": "{{p[-2]}}",
+    "tags": "{{tags}}",
+    "params": {
+           "preprocess":  { },
+           "inference":   { },
+           "postprocess": { }
+     },
+    "fallback_arns": {
+           "melpomene" : "",
+           "calliope" : "",
+           "thalia" : "",
+           "euterpe" : "",
+           "terpsicore" : "",
+           "erato" : "",
+           "kira" : ""},
+    "pipeline": "ch1",
+    "mimetype": "{{mimetype}}",
+    "timestamp": "{{timestamp}}"
+}

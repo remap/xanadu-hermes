@@ -61,6 +61,17 @@ if __name__=="__main__":
     ## fb namespace
     instance = args.instance
 
+    # todo: move to config
+    default_listeners = [
+        {"addr": "/dev-xanadu/ch/cue/ch1",
+         "args": ["listenForCh1"]},
+        {"addr": "/dev-xanadu/ch/cue/ch2",
+         "args": ["listenForCh2"]},
+        {"addr": "/dev-xanadu/ch/cue/ch2-siren",
+         "args": ["listenForCh2-siren"]},
+        {"addr": "/dev-xanadu/ch/cue/ch3",
+         "args": ["listenForCh3"]}
+    ]
 
     ## OSC
     (oscServerHost, oscServerPort) = splitHostPort(args.oscserver)
@@ -168,7 +179,7 @@ if __name__=="__main__":
 
     # https://console.firebase.google.com/u/0/project/xanadu-f5762/database/xanadu-f5762-default-rtdb/data
     # Reference the database path to monitor
-    listenPath = "/xanadu/test"
+    listenPath = "/dev-xanadu/ch"
     ref = db.reference(listenPath)
 
     global fbmsg
@@ -180,12 +191,13 @@ if __name__=="__main__":
         path = f"{listenPath}{event.path}"
         e = {"type": event.event_type, "path": path, "data": event.data}
         if fbmsg==0:
-            logger.info(f"Suppressing initial firebase message {e}")
+            logger.info(f"Suppressing initial firebase message ")#{e}")
         else:
             logger.info(f"firebase event {e}")
-            if path in fblisteners:
-                logger.debug(f"{path}-")
-                for k,v in fblisteners[path].items():
+            #ogger.debug(f"{path}")
+            for lp in fblisteners.keys():
+                if not path.startswith(lp): continue
+                for k,v in fblisteners[lp].items():
                     logger.debug(f"{k},{v}")
                     # TODO: Validate
                     if v["action"]["type"].lower() == "echo":
@@ -215,15 +227,17 @@ if __name__=="__main__":
                                 try:
                                     if isinstance(event.data, str):
                                         v["action"]["data"]["externalParams"] = json.loads(event.data)
-                                    else:
+                                        logger.debug(f"Parsed JSON: {v["action"]["data"]["externalParams"]}")
+                                    else: #dict
                                         v["action"]["data"]["externalParams"] = event.data
+                                        logger.debug(f"Got JSON: {v["action"]["data"]["externalParams"]}")
                                 except:
                                     logger.error(f"fblistener problem loading external params JSON {event.data}")
-                        logging.debug(jformat(v["action"]["data"]))
+                        logger.debug(jformat(v["action"]["data"]))
                         for ueInstance in ueclient:
                             # any always sends
                             if ueInstance == "any" or ueInstance in targets or sendToAll:
-                                    ueclient[ueInstance].sendMessage(msgs=[v["action"]["data"]], template=True)  # TODO NEED TO ITERATE!
+                                    ueclient[ueInstance].sendMessage(msgs=[v["action"]["data"]], applyTemplates=True)  # TODO NEED TO ITERATE!
         fbmsg+= 1
 
     # Firebase
@@ -657,6 +671,9 @@ if __name__=="__main__":
     udpserver = osc_server.ThreadingOSCUDPServer(
         (oscServerHost,oscServerPort), dispatcher)
     logger.info(f"Awaiting OSC via udp on {udpserver.server_address}")
+
+    for L in default_listeners:
+        handleOSC_FB_LISTEN(L["addr"], L["args"])
 
     thread=None
     if args.gui:

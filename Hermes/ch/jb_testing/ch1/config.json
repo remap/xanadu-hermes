@@ -1,0 +1,33 @@
+{
+  "module": "ch1",
+  "description": "Chrysopoeia 1",
+  "candidates_to_generate": 1,
+  "pipeline": {
+    "name": "",
+    "start_phase": "preprocess"
+  },
+  "media_files": [
+    {
+      "name": "muse.png",
+      "mimetype": "image/png",
+      "local": "../../../prompt/{{collection_parent}}/muse.png"
+    },
+        {
+      "name": "ref.png",
+      "mimetype": "image/png",
+      "local": "../../../prompt/{{collection_parent}}/style.png"
+    },
+    {
+      "name": "sketch.png",
+      "mimetype": "image/png"
+    },
+    {
+      "name": "sketch.exr",
+      "mimetype": "image/png"
+    }
+  ],
+  "input_preview_key": "sketch_png",
+  "preview_key": "output_png",
+    "output_key": "output_png",
+  "metadata_file": "metadata.json"
+}

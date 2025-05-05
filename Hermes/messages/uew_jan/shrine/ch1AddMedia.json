@@ -3,11 +3,11 @@
   "request": "/remote/object/call",
   "body": {
     "objectPath": "{{BP_Shrine_Ensemble_Tracked}}",
-    "functionName": "ShrineDrawingSave",
-    "generateTransaction": true,
+    "functionName": "ShrineCh1AddMedia",
     "parameters": {
-
-      "module": "{{module}}"
+      "url" : "{{url}}",
+      "muse" : "{{muse}}"
     }
-  }
+    },
+    "generateTransaction": true
 }

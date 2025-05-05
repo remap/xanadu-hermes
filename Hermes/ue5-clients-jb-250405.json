@@ -1,7 +1,7 @@
 {
   "ed": {
     "note": "Editor - including in multi-user sessions",
-    "host": "128.97.240.18",
+    "host": "128.97.240.184",
     "port": 30010,
     "prefix": "[unused]",
     "mapNames": true,
@@ -9,7 +9,7 @@
   },
   "pie": {
     "note": "Play in editor",
-    "host": "128.97.240.18",
+    "host": "128.97.240.184",
     "port": 30010,
     "prefix": "[unused]",
     "isPIE": true,
@@ -18,7 +18,7 @@
   },
     "ndc": {
     "note": "nDisplay display controller",
-    "host": "128.97.240.18",
+    "host": "128.97.240.184",
     "port": 30210,
     "prefix": "[unused]",
     "mapNames": true,

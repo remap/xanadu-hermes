@@ -7,7 +7,7 @@
       "request": "/remote/object/call",
       "body": {
         "objectPath": "{{BP_Shrine_Ensemble_Tracked}}",
-        "functionName": "ShrineCh3AddMedia",
+        "functionName": "ShrineCh1AddMedia",
         "parameters": {
           "url": "{{_.cue_media}}",
           "muse" : "{{_.group}}"
