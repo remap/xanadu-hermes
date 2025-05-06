@@ -63,13 +63,13 @@ if __name__=="__main__":
 
     # todo: move to config
     default_listeners = [
-        {"addr": "/dev-xanadu/ch/cue/ch1",
+        {"addr": f"/{instance}/ch/cue/ch1",
          "args": "listenForCh1"},
-        {"addr": "/dev-xanadu/ch/cue/ch2",
+        {"addr": f"/{instance}/ch/cue/ch2",
          "args": "listenForCh2"},
-        {"addr": "/dev-xanadu/ch/cue/ch2-siren",
+        {"addr": f"/{instance}/ch/cue/ch2-siren",
          "args": "listenForCh2-siren"},
-        {"addr": "/dev-xanadu/ch/cue/ch3",
+        {"addr": f"/{instance}/ch/cue/ch3",
          "args": "listenForCh3"}
     ]
 
@@ -179,7 +179,8 @@ if __name__=="__main__":
 
     # https://console.firebase.google.com/u/0/project/xanadu-f5762/database/xanadu-f5762-default-rtdb/data
     # Reference the database path to monitor
-    listenPath = "/dev-xanadu/ch"
+    listenPath = f"/{instance}/ch"
+    logger.info(f"Firebase listener root: {listenPath}" )
     ref = db.reference(listenPath)
 
     global fbmsg
