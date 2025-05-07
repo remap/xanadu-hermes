@@ -1,0 +1,9 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{BP_Spawner}}",
+    "functionName": "SpawnStop",
+    "generateTransaction": true
+  }
+}
