@@ -23,13 +23,18 @@ from hermes.fb.anonclient import FBAnonClient
 from types import SimpleNamespace
 import socket
 
+#TODO Check for existence of magick
+
+
+
 def get_primary_ip():
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        try:
-            s.connect(("8.8.8.8", 80))
-            return s.getsockname()[0]
-        except OSError:
-            return None
+    return "100.99.80.55"
+    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+    #     try:
+    #         s.connect(("8.8.8.8", 80))
+    #         return s.getsockname()[0]
+    #     except OSError:
+    #         return None
 
 
 port_web = 4243
@@ -43,8 +48,8 @@ DEBOUNCE_SEC = 1
 
 # Configure the instance
 # TODO: Change to arguments?
-root_dir = "/Volumes/ch-live-gaia/"  #"./ch"
-#root_dir = "./ch/"
+root_dir = "/users/remap/ch-live-gaia/"  #"./ch"
+#oot_dir = "./ch/"
 static_web_dir = f"ch/web"
 web_server = f"http://{get_primary_ip()}:{port_web}"
 instance = "jb_testing"
@@ -145,6 +150,7 @@ if __name__ == "__main__":
 
 
     # AWS secrets
+
     with open("xanadu-secret-aws.json") as f:
         config = types.SimpleNamespace(**json.load(f))
     session = boto3.Session(

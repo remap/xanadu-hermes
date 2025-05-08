@@ -60,7 +60,7 @@
         }
 
         #output {
-            position: fixed;
+            position: auto;
             bottom: 0;
             width: 100%;
             font-family: 'Courier New', Courier, monospace;
@@ -176,6 +176,12 @@ function customApprovalFormatter(cell, formatterParams, onRendered) {
                 cellEl.style.alignItems = "center";        // Vertically center
                 cellEl.style.justifyContent = "center";    // Horizontally center
             }
+        },
+         {
+            title: "Cue Ct",
+            field: "pulse_count",
+            hozAlign: "center",
+            verAlign: "center"
         },
         {
             title: "Input",

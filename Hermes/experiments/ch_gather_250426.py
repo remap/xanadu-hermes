@@ -9,10 +9,10 @@ import tempfile
 import random
 import datetime
 import glob
-root = Path("../ch/jb_testing")
-out = Path("../ch/gather/jb_testing")
+root = Path("/Users/remap/ch-live-gaia/jb_testing_rehearsal")
+out = Path("/Users/remap/ch-live-gaia/gather_rehearsal_250506")
 
-modules =  ["ch3"]
+modules =  ["ch1","ch2","ch2-siren","ch3"]
 
 muses = ["melpomene",
          "calliope",
@@ -32,19 +32,22 @@ for module in modules:
         folder =  root / module / "out" / muse
         print(folder)
         for child in folder.iterdir():
-
-            for file in (child).glob('*-output.png'):
+            for file in (child).glob('*-sketch.exr'):
                 if file.is_file():
                     print(f'Found: {file}')
                     shutil.copy(file, out / module)
-            for file in (child).glob('*-sd35_image.png'):
-                if file.is_file():
-                    print(f'Found: {file}')
-                    shutil.copy(file, out / module)
-            for file in (child).glob('*.glb'):
-                if file.is_file():
-                    print(f'Found: {file}')
-                    shutil.copy(file, out / module)
+            # for file in (child).glob('*-output.png'):
+            #     if file.is_file():
+            #         print(f'Found: {file}')
+            #         shutil.copy(file, out / module)
+            # for file in (child).glob('*-sd35_image.png'):
+            #     if file.is_file():
+            #         print(f'Found: {file}')
+            #         shutil.copy(file, out / module)
+            # for file in (child).glob('*.glb'):
+            #     if file.is_file():
+            #         print(f'Found: {file}')
+            #         shutil.copy(file, out / module)
 # n = 15
 # doCopy = True
 # while True:
