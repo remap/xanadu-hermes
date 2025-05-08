@@ -1,0 +1,21 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{god}}",
+    "functionName": "SetRelative",
+    "parameters": {
+      "Offset": {
+        "X": "{{x}}",
+        "Y": "{{y}}",
+        "Z": "{{z}}"
+      },
+      "Rotation": {
+        "Pitch": "{{pitch}}",
+        "Yaw": "{{yaw}}",
+        "Roll": "{{roll}}"
+      }
+    },
+    "generateTransaction": true
+  }
+}

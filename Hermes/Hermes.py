@@ -51,6 +51,7 @@ if __name__=="__main__":
     parser.add_argument('-skipuecheck', action='store_true', help='Skip checking for ue connectivity first')
     parser.add_argument('-skipuenamemap', action='store_true', help='Skip Mapping names')
     parser.add_argument('-instance', required=False, type=str, help='instance name, will override template value')
+    parser.add_argument('-cueinstance', required=False, type=str, help='cue listener instance name')
     parser.add_argument('-template', required=False, type=str, help='template file')
     parser.add_argument('-messagedir', required=False, type=str, help='message folder', default="messages")
     parser.add_argument('-paramdir', required=False, type=str, help='message folder')
@@ -59,18 +60,14 @@ if __name__=="__main__":
     args = parser.parse_args()
 
     ## fb namespace
+    cue_instance = args.cueinstance
     instance = args.instance
 
     # todo: move to config
     default_listeners = [
-        {"addr": f"/{instance}/ch/cue/ch1",
-         "args": "listenForCh1"},
-        {"addr": f"/{instance}/ch/cue/ch2",
-         "args": "listenForCh2"},
-        {"addr": f"/{instance}/ch/cue/ch2-siren",
-         "args": "listenForCh2-siren"},
-        {"addr": f"/{instance}/ch/cue/ch3",
-         "args": "listenForCh3"}
+        [f"/{cue_instance}/ch/cue/ch1", "listenForCh1"],
+        [f"/{cue_instance}/ch/cue/ch2", "listenForCh2"],
+         [f"/{cue_instance}/ch/cue/ch3", "listenForCh3"]
     ]
 
     ## OSC
@@ -179,8 +176,8 @@ if __name__=="__main__":
 
     # https://console.firebase.google.com/u/0/project/xanadu-f5762/database/xanadu-f5762-default-rtdb/data
     # Reference the database path to monitor
-    listenPath = f"/{instance}/ch"
-    logger.info(f"Firebase listener root: {listenPath}" )
+    listenPath = f"/{cue_instance}/ch"
+    logger.info(f"Firebase cue listener root: {listenPath}" )
     ref = db.reference(listenPath)
 
     global fbmsg
@@ -674,7 +671,7 @@ if __name__=="__main__":
     logger.info(f"Awaiting OSC via udp on {udpserver.server_address}")
 
     for L in default_listeners:
-        handleOSC_FB_LISTEN(L["addr"], L["args"])
+        handleOSC_FB_LISTEN("/{{instance}}/fb/listen", L[0], L[1])
 
     thread=None
     if args.gui:

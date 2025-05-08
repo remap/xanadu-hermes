@@ -1,0 +1,16 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{god}}",
+    "functionName": "OffsetRelative",
+    "parameters": {
+      "Offset": {
+        "X": "{{x}}",
+        "Y": "{{y}}",
+        "Z": "{{z}}"
+      }
+    },
+    "generateTransaction": true
+  }
+}
