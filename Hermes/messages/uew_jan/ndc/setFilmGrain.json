@@ -1,0 +1,15 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{NDC_7x800x1400_Camera}}",
+    "functionName": "SetFilmGrain",
+    "parameters": {
+      "Camera Number": "{{shrine}}",
+      "Film Grain Intensity": "{{intensity}}",
+      "Film Grain Texel Size": "{{texelSize}}"
+    }
+  },
+  "generateTransaction": true
+}
+

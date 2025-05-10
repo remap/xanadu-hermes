@@ -1,0 +1,17 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{NDC_7x800x1400_Camera}}",
+    "functionName": "SetFilmExposure",
+    "parameters": {
+      "Camera Number": "{{shrine}}",
+      "Slope": "{{slope}}",
+      "Toe": "{{toe}}",
+      "Shoulder": "{{shoulder}}",
+      "Black Clip": "{{blackClip}}"
+    }
+  },
+  "generateTransaction": true
+}
+
