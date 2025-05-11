@@ -9,9 +9,10 @@ import tempfile
 import random
 import datetime
 import glob
-root = Path("../ch/jb_testing")
+root = Path("/Users/remap/ch-live-gaia/jb_testing")
+samples = Path("/Users/remap/ch-live-gaia/test_sketches")
 
-modules =  ["ch3"]
+modules =  ["ch2", "ch3"]
 
 muses = ["melpomene",
          "calliope",
@@ -23,11 +24,12 @@ muses = ["melpomene",
 
 
 def pick_random_exr(folder_path):
+    print(f"{folder_path}/*.exr")
     exr_files = glob.glob(f"{folder_path}/*.exr")
     if not exr_files: raise FileNotFoundError(f"No .exr files found in {folder_path!r}")
     return random.choice(exr_files)
 
-n = 15   # delay in seconds
+n = 60   # delay in seconds
 doCopy = True
 while True:
 
@@ -43,7 +45,7 @@ while True:
 
     print(module, run)
     for muse in muses:
-        source = root / module / "sample_input" / muse
+        source = samples
         dest = root / module / "in" / muse / run
         file = pick_random_exr(source)
         os.makedirs(dest, exist_ok=True)

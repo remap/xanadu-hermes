@@ -60,7 +60,7 @@
         }
 
         #output {
-            position: fixed;
+            position: auto;
             bottom: 0;
             width: 100%;
             font-family: 'Courier New', Courier, monospace;
@@ -177,6 +177,12 @@ function customApprovalFormatter(cell, formatterParams, onRendered) {
                 cellEl.style.justifyContent = "center";    // Horizontally center
             }
         },
+         {
+            title: "Cue Ct",
+            field: "pulse_count",
+            hozAlign: "center",
+            verAlign: "center"
+        },
         {
             title: "Input",
             field: "input",
@@ -222,7 +228,8 @@ function customApprovalFormatter(cell, formatterParams, onRendered) {
         layout: "fitData",
         columns: tableColumns,
         pagination: "local",
-        paginationSize: 50
+        paginationSize: 50,
+        index: "collection"
     });
 
     table.on("rowContext",
@@ -293,10 +300,11 @@ function customApprovalFormatter(cell, formatterParams, onRendered) {
 
             // table.replaceData(rows);
 
-            const scrollPos = window.pageYOffset;
-            table.replaceData(rows).then(() => {
+            //const scrollPos = window.pageYOffset;
+            table.updateOrAddData(rows);
+                /*.then(() => {
                 window.scrollTo(0, scrollPos);
-            });
+            });*/
 
 
             output.textContent = new Date().toLocaleTimeString() + " Poll for status successful.";

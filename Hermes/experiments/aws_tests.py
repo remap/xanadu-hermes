@@ -4,7 +4,7 @@ import types
 import pprint
 from glom import glom
 
-with open("xanadu-secret-aws.json") as f:
+with open("../xanadu-secret-aws.json") as f:
     config = types.SimpleNamespace(**json.load(f))
 print(config)
 session = boto3.Session(
@@ -49,7 +49,7 @@ except sqs.exceptions.QueueDoesNotExist:
     print("Queue does not exist, creating.")
     response = sqs.create_queue(QueueName=queue_name)
     queue_url = response["QueueUrl"]
-except botocore.exceptions.ClientError as error:
+except Exception as error:
     print("An error occurred:", error)
     queue_url = None
 

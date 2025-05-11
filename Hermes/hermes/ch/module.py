@@ -43,7 +43,7 @@ jsonpickle.handlers.register(pathlib.PosixPath, PosixPathHandler)
 def to_namespace(d):
     return SimpleNamespace(**{k: to_namespace(v) if isinstance(v, dict) else v for k, v in d.items()})
 
-WATCHFILES_FORCE_POLLING=False
+WATCHFILES_FORCE_POLLING=True
 TIME_STRING_FORMAT = "%Y-%m-%dT%H:%M:%S"
 log_file_watch_detail = False
 
