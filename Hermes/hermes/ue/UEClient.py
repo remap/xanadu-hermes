@@ -62,7 +62,8 @@ class UEClient:
                     try:
                         return glom(replacement_dict, path)
                     except Exception as e:
-                        raise ValueError(f"Error accessing path '{path}': {e}")
+                        #raise ValueError(f"Error accessing path '{path}': {e}")
+                        self.logger.error(f"UEClient glom Error accessing path '{path}': {e}")
                 return value
             elif isinstance(value, dict):
                 return {k: replace_value(v) for k, v in value.items()}
