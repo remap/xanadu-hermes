@@ -175,7 +175,7 @@ if __name__=="__main__":
 
     # https://console.firebase.google.com/u/0/project/xanadu-f5762/database/xanadu-f5762-default-rtdb/data
     # Reference the database path to monitor
-    listenPath = f"/dev-xanadu/ch"
+    listenPath = f"/{instance}/ch"
     logger.info(f"Firebase cue listener root: {listenPath}" )
     ref = db.reference(listenPath)
 
