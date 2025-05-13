@@ -43,8 +43,11 @@ class FBAnonClient:
             self.logger.warning(f"Refresh FB Access Token: {access_token[0:25]}... Expiry: {expiration_time}")
             self.firebase.setAccessToken(access_token)
             # Schedule the next refresh in 1 hour
-            threading.Timer(3600, refresh_fb_token, args=[self.firebase, uid]).start()
+            self.timer = threading.Timer(3600, refresh_fb_token, args=[self.firebase, uid])
+            self.timer.start()
         # Start the first refresh
         refresh_fb_token(self.firebase, uid)
     def getFB(self):
         return self.firebase
+    def stop(self):
+        self.timer.cancel()
