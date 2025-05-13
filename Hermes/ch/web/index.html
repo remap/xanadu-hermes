@@ -86,7 +86,9 @@
     </div>
     <div class="buttons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 200px;">
         <button onclick="get_status()" style="width: 100%; grid-column: span 2;">Get Status</button>
+            <button onclick="push_backup()" style="width: 100%; grid-column: span 2;">Push Backup Media</button>
     </div>
+
 
 </div>
 <div id="status-table" style="width: 100%; height:100%; overflow-x: auto;"></div>
@@ -254,6 +256,14 @@ function customApprovalFormatter(cell, formatterParams, onRendered) {
     let lastData = [];
 
 
+    async function push_backup() {
+                console.log("push_ackup:");
+        const response = await fetch(encodeURI(`/push-backup`), {
+            method: "GET",
+            headers: {"Content-Type": "text/plain"},
+        });
+
+    }
     async function get_status() {
         const output = document.getElementById("output");
         // const main_area = document.getElementById("status-table");

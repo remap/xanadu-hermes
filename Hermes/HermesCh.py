@@ -28,13 +28,12 @@ import socket
 
 
 def get_primary_ip():
-    return "100.99.80.55"
-    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-    #     try:
-    #         s.connect(("8.8.8.8", 80))
-    #         return s.getsockname()[0]
-    #     except OSError:
-    #         return None
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        try:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+        except OSError:
+            return None
 
 
 port_web = 4243
@@ -112,6 +111,19 @@ class EmbeddedFastAPIServer:
             except:
                 self.logger.error(f"Error in approve call", exc_info=True)
             return {"content": status }
+
+
+        @self.app.get("/push-backup")
+        async def push_backup():
+            self.logger.warning(f"push_backup called")
+            urls = [ "foo" ]
+            try:
+                for url in urls:
+                    pass
+            except:
+                self.logger.error(f"Error in push_backup call", exc_info=True)
+            return {"content": "" }
+
 
         @self.app.get("/pulse_cue")
         async def pulse_cue(module: str, collection: str):

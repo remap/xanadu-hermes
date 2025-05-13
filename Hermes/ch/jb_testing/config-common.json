@@ -1,5 +1,5 @@
 {
-  "target_environment": "dev",
+  "target_environment": "stage",
   "instance": "jb_testing",
   "metadata": {
     "template_file": "metadata_template.jsont",
@@ -14,18 +14,18 @@
     "require_depth" : 2
   },
   "s3": {
-    "input_bucket": "dev-xanadu-raw-input",
-    "output_bucket": "dev-xanadu-postprocess"
+    "input_bucket": "stage-xanadu-raw-input",
+    "output_bucket": "stage-xanadu-postprocess"
   },
   "sqs": {
-    "notify_queue_name": "dev-xanadu",
-    "listen_queue_name": "dev-xanadu-hermes-ch-jb_testing"
+    "notify_queue_name": "stage-xanadu",
+    "listen_queue_name": "stage-xanadu-hermes-ch-jb_testing"
   },
   "sns": {
-    "listen_topic_arn": "arn:aws:sns:us-west-2:976618892613:dev-xanadu"
+    "listen_topic_arn": "arn:aws:sns:us-west-2:976618892613:stage-xanadu"
   },
   "firebase": {
-    "notify_key": "/dev-xanadu/ch/notify",
-    "cue_key": "/dev-xanadu/ch/cue"
+    "notify_key": "/stage-xanadu/ch/notify",
+    "cue_key": "/xanadu/ch/cue"
   }
 }

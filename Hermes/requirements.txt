@@ -7,4 +7,6 @@ requests
 nicegui
 firebase_admin
 glom
+jsonmerge
+jsonpickle
 colorama

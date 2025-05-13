@@ -33,7 +33,7 @@ with open("ch-quickdraw-categories.txt", "r") as file:
 
 
 instances = ["jb_testing"]
-modules = ["ch1", "ch2", "ch3", "ch4"]
+modules = ["ch1"]
 groups = ["melpomene",
       "calliope",
       "thalia",

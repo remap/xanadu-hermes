@@ -64,9 +64,9 @@ if __name__=="__main__":
 
     # todo: move to config
     default_listeners = [
-        [f"/{instance}/ch/cue/ch1", "listenForCh1"],
-        [f"/{instance}/ch/cue/ch2", "listenForCh2"],
-         [f"/{instance}/ch/cue/ch3", "listenForCh3"]
+        # [f"/{instance}/ch/cue/ch1", "listenForCh1"],
+        # [f"/{instance}/ch/cue/ch2", "listenForCh2"],
+        #  [f"/{instance}/ch/cue/ch3", "listenForCh3"]
     ]
 
     ## OSC

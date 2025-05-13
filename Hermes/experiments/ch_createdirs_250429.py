@@ -9,7 +9,7 @@ import tempfile
 import random
 import datetime
 import glob
-root = Path("/Volumes/ch-live-agouti/jb_testing")
+root = Path("/Users/remap/ch-live-gaia/jb_testing")
 
 modules =  ["ch1", "ch2", "ch2-siren", "ch3"]
 
