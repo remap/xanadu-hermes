@@ -1,0 +1,16 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{NDC_7x800x1400_Camera}}",
+    "functionName": "SetFilmBloom",
+    "parameters": {
+      "Camera Number": "{{shrine}}",
+      "Intensity": "{{intensity}}",
+      "Threshold": "{{threshold}}",
+      "Size scale": "{{sizescale}}"
+    }
+  },
+  "generateTransaction": true
+}
+
