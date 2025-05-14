@@ -1,0 +1,14 @@
+{
+  "description": "",
+  "request": "/remote/object/call",
+  "body": {
+    "objectPath": "{{BP_Shrine_Ensemble_Tracked}}",
+    "functionName": "SetShelfVisibility",
+    "parameters": {
+      "bHideBase": "{{hideBase}}",
+      "bHideCovers": "{{hideCovers}}",
+      "bHideEmissive" : "{{hideEmissive}}"
+    },
+    "generateTransaction": true
+  }
+}

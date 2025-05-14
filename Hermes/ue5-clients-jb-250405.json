@@ -1,36 +1,21 @@
 {
-  "ed": {
-    "note": "Editor - including in multi-user sessions",
-    "host": "128.97.240.184",
+    "ndc": {
+    "note": "nDisplay display controller",
+    "host": "128.97.240.119",
     "port": 30010,
     "prefix": "[unused]",
-    "mapNames": true,
-    "check": true
-  },
-  "pie": {
-    "note": "Play in editor",
-    "host": "128.97.240.184",
-    "port": 30010,
-    "prefix": "[unused]",
-    "isPIE": true,
+      "isPIE": true,
     "mapNames": true,
     "check": false
   },
-    "ndc": {
-    "note": "nDisplay display controller",
-    "host": "128.97.240.184",
-    "port": 30210,
-    "prefix": "[unused]",
-    "mapNames": true,
-    "check": true
-  },
+
   "t_ndc": {
     "note": "nDisplay display controller, tailscale",
     "host": "100.76.232.7",
     "port": 30210,
     "prefix": "[unused]",
     "mapNames": true,
-    "check": true
+    "check": false
   }
 
 

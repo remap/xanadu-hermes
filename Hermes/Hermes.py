@@ -64,9 +64,9 @@ if __name__=="__main__":
 
     # todo: move to config
     default_listeners = [
-        # [f"/{instance}/ch/cue/ch1", "listenForCh1"],
-        # [f"/{instance}/ch/cue/ch2", "listenForCh2"],
-        #  [f"/{instance}/ch/cue/ch3", "listenForCh3"]
+        [f"/{instance}/ch/cue/ch1", "listenForCh1"],
+        [f"/{instance}/ch/cue/ch2", "listenForCh2"],
+        [f"/{instance}/ch/cue/ch3", "listenForCh3"]
     ]
 
     ## OSC
@@ -186,7 +186,7 @@ if __name__=="__main__":
     def firebaseEventListener(event):
         global fbmsg, fblisteners
         path = f"{listenPath}{event.path}"
-        e = {"type": event.event_type, "path": path, "data": event.data}
+        e = {"type": event.event_type, "path": path, "data": str(event.data)[:80]+"..."}
         if fbmsg==0:
             logger.info(f"Suppressing initial firebase message ")#{e}")
         else:
@@ -195,12 +195,12 @@ if __name__=="__main__":
             for lp in fblisteners.keys():
                 if not path.startswith(lp): continue
                 for k,v in fblisteners[lp].items():
-                    logger.debug(f"{k},{v}")
+                    #logger.debug(f"{k},{v}")  - prints which listener
                     # TODO: Validate
                     if v["action"]["type"].lower() == "echo":
                         logger.debug("echo=>" + v["action"]["data"].format(path=path,value=event.data))
                     if v["action"]["type"].lower() == "unreal":
-                        logger.debug("unreal=>")
+                        #logger.debug("unreal=>")
                         target = "*" if "target" not in v["action"] else v["action"]["target"]  # default to all
                         if not isinstance(target, list): target = [target]
                         # TODO: Repeated from call - fix
@@ -230,7 +230,7 @@ if __name__=="__main__":
                                         logger.debug(f"Got JSON: {v["action"]["data"]["externalParams"]}")
                                 except:
                                     logger.error(f"fblistener problem loading external params JSON {event.data}")
-                        logger.debug(jformat(v["action"]["data"]))
+                        #logger.debug(jformat(v["action"]["data"]))
                         for ueInstance in ueclient:
                             # any always sends
                             if ueInstance == "any" or ueInstance in targets or sendToAll:
