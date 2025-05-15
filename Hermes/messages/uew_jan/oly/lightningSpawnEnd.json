@@ -2,8 +2,8 @@
   "description": "",
   "request": "/remote/object/call",
   "body": {
-    "objectPath": "{{BP_Spawner}}",
-    "functionName": "SpawnStop",
+    "objectPath": "{{BP_LightningSpawnManager}}",
+    "functionName": "LightningSpawnEnd",
     "generateTransaction": true
   }
 }
