@@ -7,16 +7,32 @@ from datetime import datetime, timezone
 import string
 import os
 import json
-
+from unique_names_generator import get_random_name
 import firebase_admin  # pip install firebase-admin
 from firebase_admin import credentials, db
+from unique_names_generator.data import ADJECTIVES, NAMES
+import curses
+import readchar
+
+muses = ["melpomene",
+      "calliope",
+      "thalia",
+      "euterpe",
+      "terpsicore",
+      "erato",
+      "kira"]
 
 
 # simple class to random walk location and rotation
 # and publish to firebase in the format used
 # by the kleroterion 8th wall app
 
+def random_hex_color():
+    return f"#{random.randrange(0x1000000):06x}"
+
 class RandomWalk3D:
+    change_connected = False
+
     def __init__(self, name, instance, db):
         self.name = name
         self.instance = instance
@@ -24,14 +40,17 @@ class RandomWalk3D:
         self.ref_peer = db.reference(f"/{self.instance}/kl/peers/{self.name}")
         self.ref_camera = db.reference(f"/{self.instance}/kl/{self.name}/camera-publisher/camera")
         #
+        self.group = random.choice(muses)
+        self.paint_color = random_hex_color()
         self.position = {"x": 0.0, "y": 0.0, "z": 0.0}  # Starting position at origin
         self.rotation = {"x": 0.0, "y": 0.0, "z": 0.0}  # Starting rotation
         self.t = 0
         self.T0 = int(time.time() * 1000)
+        self.connected = True
 
     def walk(self):
         self.t = int(time.time() * 1000) - self.T0
-        dx, dy, dz = (random.uniform(-1, 1) for _ in range(3))
+        dx, dy, dz = (random.uniform(-.2, .2) for _ in range(3))
         drx, dry, drz = (random.uniform(-math.pi / 36.0, math.pi / 36.0) for _ in range(3))  # ±5 degrees in radians
 
         self.position["x"] += dx
@@ -47,8 +66,18 @@ class RandomWalk3D:
         # print(f"Walker {self.name} t: {self.t} pos: {self.position}, rot: {self.rotation}")
         # self.db.put_async(f"/{self.instance}/kl/{self.name}/camera-publisher", "camera",
         #                   {"position": self.position, "rotation": self.rotation}, callback=fb_callback)
+        if RandomWalk3D.change_connected:
+            self.connected = random.choice([True, False])
         self.ref_camera.set(
-            {"position": self.position, "rotation": self.rotation}
+            {"position": self.position,
+             "position_recentered": self.position,
+             "rotation": self.rotation,
+             "connected": True,
+             "group" : self.group,
+             "paint_color": self.paint_color,
+             "paint_touch": True,
+            "connected": self.connected,
+             }
         )
 
     def peer_update(self):
@@ -65,7 +94,11 @@ class RandomWalk3D:
         self.ref_peer.set(
             {"lastSeenUTC": ft, "lastSeenUnix": unixms,
              "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:136.0) Gecko/20100101 Firefox/136.0",
-             "userData": '{}'}
+             "userData": '{}',
+             "tapped" : True,
+             "rnbo_ready" : True,
+             "reality" : True,
+             "document_visible": True}
         )
 
     def format_time_as_iso8601(self, t):
@@ -98,18 +131,23 @@ def main():
     })
 
     ###
-    num_walkers = 50  # number of random walkers.
-    interval = 0.033  # peroid in seconds to update camera publishers
+    num_walkers = 100  # number of random walkers.
+    interval = 0.100  # peroid in seconds to update camera publishers
     peer_interval = 1  # period in seconds to update peer namespace /{instance}/kdl/peers
     instance = 'xanadu'  # instance namespace to use
     idfile = 'walker_ids.txt'  # where to persist ids. delete to create new ids
+    change_interval = 10
 
     ##
 
     ## Maintain a list of random client ids
     ## Write to a file to limit the number of new ids, which becomes unwieldy to observer in thd db.
     def generate_random_strings(length):
-        return [''.join(random.choices(string.ascii_lowercase + string.digits, k=8)) for _ in range(length)]
+        n = []
+        for i in range(0,length):
+            n.append(get_random_name(separator='-', style='lowercase', combo=[ADJECTIVES,NAMES]))
+        return n
+        #return [''.join(random.choices(string.ascii_lowercase + string.digits, k=8)) for _ in range(length)]
 
     names = []
     if os.path.exists(idfile):
@@ -133,9 +171,19 @@ def main():
         threads.append(wthread)
         time.sleep(0.05)
         wthread.start()
-    print(f"{num_walkers} threads created.")
+    print(f"{num_walkers} threads created.\n")
     try:
+        next_run = time.time() + change_interval
+        dt = random.uniform(change_interval * 0.9, change_interval * 1.5)
+        print(f"Next connectivity state change next_run {dt:0.3f}")
         while True:
+            now = time.time()
+            if RandomWalk3D.change_connected: RandomWalk3D.change_connected = False
+            if now >= next_run:
+                RandomWalk3D.change_connected = True
+                dt = random.uniform(change_interval*0.9, change_interval*1.5)
+                print(f"Change connectivity state. next_run {dt:0.3f}")
+                next_run = time.time() + dt
             time.sleep(1)  # Keep the main thread alive
     except KeyboardInterrupt:
         print("Stopping walkers.")
