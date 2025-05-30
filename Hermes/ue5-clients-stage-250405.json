@@ -1,58 +1,7 @@
 {
-  "any": {
-    "load": false,
-    "note": "Should receive a copy of any message (unused)",
-    "host": "128.97.240.18",
-    "port": 30010,
-    "prefix": "[unused]",
-    "mapNames": false,
-    "check": false
-  },
-  "ed": {
-    "note": "Editor - including in multi-user sessions",
-    "host": "128.97.240.18",
-    "port": 30010,
-    "prefix": "[unused]",
-    "mapNames": true,
-    "check": true
-  },
-  "pie": {
-    "note": "Play in editor",
-    "host": "128.97.240.18",
-    "port": 30010,
-    "prefix": "[unused]",
-    "isPIE": true,
-    "mapNames": true,
-    "check": false
-  },
-      "mypie": {
-    "note": "Play in editor",
-    "host": "128.97.240.165",
-    "port": 30010,
-    "isPIE": true,
-    "mapNames": true,
-    "check": false
-  },
-      "gpie": {
-    "note": "Play in editor",
-    "host": "128.97.240.22",
-    "port": 30010,
-    "isPIE": true,
-    "mapNames": true,
-    "check": false
-  },
-
-  "game": {
-    "note": "Standalone game, launched frome editor or separantely",
-    "host": "128.97.240.18",
-    "port": 30110,
-    "prefix": "[unused]",
-    "mapNames": true,
-    "check": false
-  },
   "ndc": {
     "note": "nDisplay display controller",
-    "host": "128.97.240.18",
+    "host": "192.168.0.101",
     "port": 30210,
     "prefix": "[unused]",
     "mapNames": true,

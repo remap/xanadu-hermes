@@ -17,9 +17,9 @@ import tempfile
 import random
 import datetime
 import glob
-root = Path("/Users/jburke/ch-live-gaia/jb_testing")
+root = Path("/Users/remap/ch-live-gaia/jb_testing")
 
-modules =  ["ch2","ch3"]
+modules =  ["ch1","ch2","ch3"]
 
 muses = ["melpomene",
          "calliope",

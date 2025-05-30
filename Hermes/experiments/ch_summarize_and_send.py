@@ -14,8 +14,8 @@ import json
 import boto3
 import string
 
-root = Path("/Volumes/ch-live-gaia/jb_testing") #/Users/remap/ch-live-gaia/jb_testing")
-out = Path("/Volumes/ch-live-gaia/jb_testing/summary.jpg") #/Users/remap/ch-live-gaia/jb_testing/summary.jpg")
+root = Path("/Users/remap/ch-live-gaia/jb_testing") #/Users/remap/ch-live-gaia/jb_testing")
+out = Path("/Users/remap/ch-live-gaia/jb_testing/summary.jpg") #/Users/remap/ch-live-gaia/jb_testing/summary.jpg")
 aws_bucket = "xanadu-public"
 aws_file = "summary.jpg"
 
@@ -63,7 +63,7 @@ for module in modules:
             if n>0:break
             for file in (child).glob('*-output.png'):
                 if file.is_file():
-                    if random.randint(0,1) > 0:
+                    if random.randint(0,1) > -1:
                         n+=1
                         print(f'Found {module} {muse}: {file}')
                         latest.append(file)
@@ -74,7 +74,7 @@ for module in modules:
             if n>0:break
             for file in (child).glob('*-sd35_image.png'):
                 if file.is_file():
-                    if random.randint(0,1) > 0:
+                    if random.randint(0,1) > -1:
                         n+=1
                         print(f'Found {module} {muse}: {file}')
                         latest.append(file)
