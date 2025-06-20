@@ -17,9 +17,18 @@ import tempfile
 import random
 import datetime
 import glob
+import socket
 root = Path("/Users/remap/ch-live-gaia/jb_testing")
 
 modules =  ["ch1","ch2","ch3"]
+
+# muses = ["melpomene",
+#          "calliope",
+#          "thalia",
+#          "euterpe",
+#          "terpsicore",
+#          "erato",
+#          "kira"]
 
 muses = ["melpomene",
          "calliope",
@@ -29,8 +38,17 @@ muses = ["melpomene",
          "erato",
          "kira"]
 
+def get_primary_ip():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        try:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+        except OSError:
+            return None
 
 
+
+ip = get_primary_ip()
 
 
 for module in modules:
@@ -42,7 +60,7 @@ for module in modules:
                 if file.is_file():
                     d = {
                         "addr": "/xanadu/ch/cue/" +  str(Path(file).parent.relative_to(root)).replace("out/",""),
-                        "msg":   {'cue': 'SHOW_MEDIA', 'group': muse, 'module': module, 'cue_media': 'http://128.97.240.184:4243/' + str(Path(file).relative_to(root))}
+                        "msg":   {'cue': 'SHOW_MEDIA', 'group': muse, 'module': module, 'cue_media': 'http://' + ip + ':4243/' + str(Path(file).relative_to(root))}
                     }
                     print(d["addr"], d["msg"])
                     result = firebase.post(d["addr"], d["msg"])
@@ -52,7 +70,7 @@ for module in modules:
                     d = {
                         "addr": "/xanadu/ch/cue/" +  str(Path(file).parent.relative_to(root)).replace("out/",""),
                         "msg": {'cue': 'SHOW_MEDIA', 'group': muse, 'module': module,
-                                'cue_media': 'http://128.97.240.184:4243/' + str(Path(file).relative_to(root))}
+                                'cue_media': 'http://'+ip+':4243/' + str(Path(file).relative_to(root))}
                     }
                     print(d["addr"], d["msg"])
                     result = firebase.post(d["addr"], d["msg"])
